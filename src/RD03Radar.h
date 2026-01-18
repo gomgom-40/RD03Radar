@@ -3,7 +3,9 @@
 
 #include <Arduino.h>
 #include <HardwareSerial.h>
+#if defined(ESP8266) || defined(__AVR__)
 #include <SoftwareSerial.h>
+#endif
 #include <vector>
 #include <functional>
 
@@ -140,12 +142,14 @@ public:
      */
     RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
 
+#if defined(ESP8266) || defined(__AVR__)
     /**
      * @brief Constructor for SoftwareSerial
      * @param serial SoftwareSerial interface for radar communication
      * @param config Radar configuration (optional)
      */
     RD03Radar(SoftwareSerial& serial, const RD03Config& config = RD03Config());
+#endif
 
 
     /**

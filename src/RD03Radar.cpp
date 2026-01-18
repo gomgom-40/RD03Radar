@@ -57,6 +57,7 @@ RD03Radar::RD03Radar(HardwareSerial& serial, const RD03Config& config)
     _uartBuffer.reserve(MAX_BUFFER_SIZE);
 }
 
+#if defined(ESP8266) || defined(__AVR__)
 // Constructor for SoftwareSerial
 RD03Radar::RD03Radar(SoftwareSerial& serial, const RD03Config& config)
     : _serialType(SerialType::SOFTWARE_SERIAL)
@@ -82,6 +83,7 @@ RD03Radar::RD03Radar(SoftwareSerial& serial, const RD03Config& config)
     // Initialize UART buffer
     _uartBuffer.reserve(MAX_BUFFER_SIZE);
 }
+#endif
 
 RD03Radar::~RD03Radar() {
     end();
@@ -707,18 +709,24 @@ const char* RD03Radar::presenceStateToString(RD03PresenceState state) const {
 Stream* RD03Radar::getSerialStream() const {
     if (_serialType == SerialType::HARDWARE_SERIAL) {
         return static_cast<HardwareSerial*>(_serialPtr);
-    } else if (_serialType == SerialType::SOFTWARE_SERIAL) {
+    }
+#if defined(ESP8266) || defined(__AVR__)
+    else if (_serialType == SerialType::SOFTWARE_SERIAL) {
         return static_cast<SoftwareSerial*>(_serialPtr);
     }
+#endif
     return nullptr;
 }
 
 void RD03Radar::serialBegin(uint32_t baudRate) {
     if (_serialType == SerialType::HARDWARE_SERIAL) {
         static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate);
-    } else if (_serialType == SerialType::SOFTWARE_SERIAL) {
+    }
+#if defined(ESP8266) || defined(__AVR__)
+    else if (_serialType == SerialType::SOFTWARE_SERIAL) {
         static_cast<SoftwareSerial*>(_serialPtr)->begin(baudRate);
     }
+#endif
 }
 
 void RD03Radar::serialBegin(uint32_t baudRate, int rxPin, int txPin) {
@@ -740,7 +748,10 @@ void RD03Radar::serialBegin(uint32_t baudRate, int rxPin, int txPin) {
 void RD03Radar::serialEnd() {
     if (_serialType == SerialType::HARDWARE_SERIAL) {
         static_cast<HardwareSerial*>(_serialPtr)->end();
-    } else if (_serialType == SerialType::SOFTWARE_SERIAL) {
+    }
+#if defined(ESP8266) || defined(__AVR__)
+    else if (_serialType == SerialType::SOFTWARE_SERIAL) {
         static_cast<SoftwareSerial*>(_serialPtr)->end();
     }
+#endif
 }
