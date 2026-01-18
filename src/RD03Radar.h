@@ -420,6 +420,12 @@ private:
     void watchdogCheck();
 
     /**
+     * @brief Initialize radar sensor
+     * @return true if initialization successful
+     */
+    bool initializeRadar();
+
+    /**
      * @brief Send radar reset commands
      */
     void sendResetCommands();
