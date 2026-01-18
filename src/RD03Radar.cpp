@@ -31,7 +31,31 @@ const uint8_t RADAR_INIT_CMD2[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x02, 0x00, 0x00, 0x0
 // Constructor & Destructor
 // ============================================================================
 
-RD03Radar::RD03Radar(HardwareSerial& serial, const RD03Config& config)
+RD03Radar::RD03Radar(Stream& serial, const RD03Config& config)
+    : _serial(serial)
+    , _config(config)
+    , _presenceState(RD03PresenceState::NO_PRESENCE)
+    , _controlMode(RD03ControlMode::AUTOMATIC)
+    , _status(RD03Status::OK)
+    , _startTime(0)
+    , _lastActivityTime(0)
+    , _lastPublishTime(0)
+    , _radarLastSeenTime(0)
+    , _watchdogActivityTime(0)
+    , _noTargetSince(0)
+    , _lastValidDistance(0.0f)
+    , _lastDistanceForMotion(0.0f)
+    , _motionHits(0)
+    , _presenceActive(false)
+    , _manualOffRecent(false)
+    , _initialized(false)
+    , _lastByteTime(0)
+{
+    // Initialize UART buffer
+    _uartBuffer.reserve(MAX_BUFFER_SIZE);
+}
+
+RD03Radar::RD03Radar(Stream& serial, const RD03Config& config)
     : _serial(serial)
     , _config(config)
     , _presenceState(RD03PresenceState::NO_PRESENCE)
