@@ -356,21 +356,25 @@ String RD03Radar::processUART() {
     if (serial) {
         while (serial->available() && _uartBuffer.size() < MAX_BUFFER_SIZE) {
             if (serial->readBytes(&byte, 1) > 0) {
-            uint32_t now = millis();
+                uint32_t now = millis();
 
-            // Clear stale data if timeout exceeded
-            if (_lastByteTime && (now - _lastByteTime > UART_STALE_TIMEOUT_MS)) {
-                _uartBuffer.clear();
-            }
+                // Clear stale data if timeout exceeded
+                if (_lastByteTime && (now - _lastByteTime > UART_STALE_TIMEOUT_MS)) {
+                    _uartBuffer.clear();
+                }
 
-            _lastByteTime = now;
-            _uartBuffer.push_back(byte);
+                _lastByteTime = now;
+                _uartBuffer.push_back(byte);
 
-            if (byte == '\n') {
-                newLineFound = true;
-                break;
+                if (byte == '\n') {
+                    newLineFound = true;
+                    break;
+                }
             }
         }
+    } else {
+        // Serial not available
+        return "";
     }
 
     // Process complete line
@@ -399,6 +403,10 @@ String RD03Radar::processUART() {
         _uartBuffer.clear();
     }
 
+    // Default return for all other cases
+    return "";
+
+    // This should never be reached, but added for compiler safety
     return "";
 }
 
