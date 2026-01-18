@@ -343,7 +343,7 @@ String RD03Radar::processUART() {
 
     // Process complete line
     if (newLineFound && !_uartBuffer.empty()) {
-        String line = String((char*)_uartBuffer.data(), _uartBuffer.size());
+        String line = String((unsigned char*)_uartBuffer.data(), _uartBuffer.size());
         _uartBuffer.clear();
 
         // Trim whitespace and remove carriage returns
