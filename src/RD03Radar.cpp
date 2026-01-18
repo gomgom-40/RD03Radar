@@ -111,7 +111,9 @@ bool RD03Radar::begin() {
 
 void RD03Radar::end() {
     if (_initialized) {
-        _serial.end();
+        // Note: Stream class doesn't have end() method
+        // HardwareSerial and SoftwareSerial have it, but we can't call it safely
+        // from a Stream reference. Just mark as not initialized.
         _initialized = false;
         updateStatus(RD03Status::OK, "Radar stopped");
     }
