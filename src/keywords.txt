@@ -1,0 +1,63 @@
+# RD03Radar Library Keywords for Arduino IDE Syntax Highlighting
+
+# Classes
+RD03Radar	KEYWORD1
+
+# Enumerations
+RD03Status	KEYWORD1
+RD03PresenceState	KEYWORD1
+RD03ControlMode	KEYWORD1
+
+# Structures
+RD03Config	KEYWORD1
+
+# Callback Types
+PresenceCallback	KEYWORD2
+StatusCallback	KEYWORD2
+DistanceCallback	KEYWORD2
+LightControlCallback	KEYWORD2
+
+# Methods
+begin	KEYWORD2
+end	KEYWORD2
+loop	KEYWORD2
+setConfig	KEYWORD2
+getConfig	KEYWORD2
+setRange	KEYWORD2
+setSensitivity	KEYWORD2
+setHoldTime	KEYWORD2
+setControlMode	KEYWORD2
+getControlMode	KEYWORD2
+manualLightControl	KEYWORD2
+resetPresence	KEYWORD2
+getPresenceState	KEYWORD2
+getDistance	KEYWORD2
+getStatus	KEYWORD2
+isOperational	KEYWORD2
+getUptime	KEYWORD2
+getLastActivityTime	KEYWORD2
+onPresenceChange	KEYWORD2
+onStatusChange	KEYWORD2
+onDistanceMeasurement	KEYWORD2
+onLightControl	KEYWORD2
+resetRadar	KEYWORD2
+getVersion	KEYWORD2
+getInfo	KEYWORD2
+
+# Constants
+AUTOMATIC	LITERAL1
+MANUAL_ON	LITERAL1
+FORCE_ON	LITERAL1
+FORCE_OFF	LITERAL1
+OK	LITERAL1
+ERROR	LITERAL1
+NO_SIGNAL	LITERAL1
+BUFFER_OVERFLOW	LITERAL1
+INVALID_DATA	LITERAL1
+WATCHDOG_RESET	LITERAL1
+NO_PRESENCE	LITERAL1
+PRESENCE_DETECTED	LITERAL1
+MOTION_DETECTED	LITERAL1
+MAINTAINING	LITERAL1
+FAST_EXIT	LITERAL1
+SAFETY_TIMEOUT	LITERAL1
