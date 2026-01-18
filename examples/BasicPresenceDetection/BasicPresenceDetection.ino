@@ -204,7 +204,7 @@ void setup() {
     #if defined(ESP8266)
       if (radar.begin()) {  // ESP8266 uses SoftwareSerial (already initialized)
     #else
-      if (radar.begin(16, 17)) {  // ESP32 uses HardwareSerial with pins
+      if (radar.begin(16, 17)) {  // ESP32 uses HardwareSerial with custom pins
     #endif
         Serial.println("✅ Radar initialized successfully!");
         Serial.println("Waiting for presence detection...");

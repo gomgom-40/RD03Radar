@@ -96,8 +96,12 @@ bool RD03Radar::begin(int rxPin, int txPin) {
         return true;
     }
 
-    // Initialize serial with hardware pins
-    serialBegin(_config.baudRate, rxPin, txPin);
+    // Initialize serial with hardware pins (ESP32) or without pins (ESP8266/other)
+    #if defined(ESP32)
+        serialBegin(_config.baudRate, rxPin, txPin);
+    #else
+        serialBegin(_config.baudRate);
+    #endif
 
     // Wait for radar to power up
     delay(RADAR_INIT_DELAY_MS);
@@ -719,7 +723,16 @@ void RD03Radar::serialBegin(uint32_t baudRate) {
 
 void RD03Radar::serialBegin(uint32_t baudRate, int rxPin, int txPin) {
     if (_serialType == SerialType::HARDWARE_SERIAL) {
-        static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate, SERIAL_8N1, rxPin, txPin);
+        #if defined(ESP32)
+            // ESP32 HardwareSerial signature
+            static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate, SERIAL_8N1, rxPin, txPin);
+        #elif defined(ESP8266)
+            // ESP8266 HardwareSerial signature - pins are fixed for each serial instance
+            static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate);
+        #else
+            // Other platforms - try standard signature
+            static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate);
+        #endif
     }
     // SoftwareSerial doesn't need pins - they're set in constructor
 }
