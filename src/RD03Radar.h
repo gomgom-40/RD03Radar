@@ -130,12 +130,6 @@ public:
      */
     RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
 
-    /**
-     * @brief Constructor for Stream (supports SoftwareSerial, HardwareSerial, etc.)
-     * @param serial UART interface for radar communication
-     * @param config Radar configuration (optional)
-     */
-    RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
 
     /**
      * @brief Destructor
