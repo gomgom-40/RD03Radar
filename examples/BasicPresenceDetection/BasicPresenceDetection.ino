@@ -59,8 +59,7 @@ RD03Config radarConfig;
   RD03Radar radar(radarSerial, radarConfig);
 #else
   // ESP32 uses Serial2 (HardwareSerial)
-  HardwareSerial& radarSerial = Serial2;
-  RD03Radar radar(radarSerial, radarConfig);
+  RD03Radar radar(Serial2, radarConfig);
 #endif
 
 // ============================================================================
@@ -203,10 +202,9 @@ void setup() {
     // Initialize radar
     Serial.println("Initializing radar...");
     #if defined(ESP8266)
-      radarSerial.begin(115200);  // Initialize SoftwareSerial
-      if (radar.begin()) {  // ESP8266 uses SoftwareSerial
+      if (radar.begin()) {  // ESP8266 uses SoftwareSerial (already initialized)
     #else
-      if (radar.begin(16, 17)) {  // ESP32 uses custom pins
+      if (radar.begin(16, 17)) {  // ESP32 uses HardwareSerial with pins
     #endif
         Serial.println("✅ Radar initialized successfully!");
         Serial.println("Waiting for presence detection...");

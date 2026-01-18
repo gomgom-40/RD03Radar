@@ -31,8 +31,36 @@ const uint8_t RADAR_INIT_CMD2[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x02, 0x00, 0x00, 0x0
 // Constructor & Destructor
 // ============================================================================
 
-RD03Radar::RD03Radar(Stream& serial, const RD03Config& config)
-    : _serial(serial)
+// Constructor for HardwareSerial
+RD03Radar::RD03Radar(HardwareSerial& serial, const RD03Config& config)
+    : _serialType(SerialType::HARDWARE_SERIAL)
+    , _serialPtr(&serial)
+    , _config(config)
+    , _presenceState(RD03PresenceState::NO_PRESENCE)
+    , _controlMode(RD03ControlMode::AUTOMATIC)
+    , _status(RD03Status::OK)
+    , _startTime(0)
+    , _lastActivityTime(0)
+    , _lastPublishTime(0)
+    , _radarLastSeenTime(0)
+    , _watchdogActivityTime(0)
+    , _noTargetSince(0)
+    , _lastValidDistance(0.0f)
+    , _lastDistanceForMotion(0.0f)
+    , _motionHits(0)
+    , _presenceActive(false)
+    , _manualOffRecent(false)
+    , _initialized(false)
+    , _lastByteTime(0)
+{
+    // Initialize UART buffer
+    _uartBuffer.reserve(MAX_BUFFER_SIZE);
+}
+
+// Constructor for SoftwareSerial
+RD03Radar::RD03Radar(SoftwareSerial& serial, const RD03Config& config)
+    : _serialType(SerialType::SOFTWARE_SERIAL)
+    , _serialPtr(&serial)
     , _config(config)
     , _presenceState(RD03PresenceState::NO_PRESENCE)
     , _controlMode(RD03ControlMode::AUTOMATIC)
@@ -69,7 +97,7 @@ bool RD03Radar::begin(int rxPin, int txPin) {
     }
 
     // Initialize serial with hardware pins
-    _serial.begin(_config.baudRate, SERIAL_8N1, rxPin, txPin);
+    serialBegin(_config.baudRate, rxPin, txPin);
 
     // Wait for radar to power up
     delay(RADAR_INIT_DELAY_MS);
@@ -92,7 +120,7 @@ bool RD03Radar::begin() {
     }
 
     // Initialize serial (assumes it's already configured)
-    _serial.begin(_config.baudRate);
+    serialBegin(_config.baudRate);
 
     // Wait for radar to power up
     delay(RADAR_INIT_DELAY_MS);
@@ -324,8 +352,10 @@ String RD03Radar::processUART() {
     bool newLineFound = false;
 
     // Read available bytes
-    while (_serial.available() && _uartBuffer.size() < MAX_BUFFER_SIZE) {
-        if (_serial.readBytes(&byte, 1) > 0) {
+    Stream* serial = getSerialStream();
+    if (serial) {
+        while (serial->available() && _uartBuffer.size() < MAX_BUFFER_SIZE) {
+            if (serial->readBytes(&byte, 1) > 0) {
             uint32_t now = millis();
 
             // Clear stale data if timeout exceeded
@@ -610,12 +640,15 @@ void RD03Radar::watchdogCheck() {
 // ============================================================================
 
 void RD03Radar::sendResetCommands() {
+    Stream* serial = getSerialStream();
+    if (!serial) return;
+
     // Send first initialization command
-    _serial.write(RADAR_INIT_CMD1, sizeof(RADAR_INIT_CMD1));
+    serial->write(RADAR_INIT_CMD1, sizeof(RADAR_INIT_CMD1));
     delay(100);
 
     // Send second initialization command
-    _serial.write(RADAR_INIT_CMD2, sizeof(RADAR_INIT_CMD2));
+    serial->write(RADAR_INIT_CMD2, sizeof(RADAR_INIT_CMD2));
 }
 
 void RD03Radar::clearUARTBuffer() {
@@ -623,8 +656,11 @@ void RD03Radar::clearUARTBuffer() {
     _lastByteTime = 0;
 
     // Clear any remaining data in serial buffer
-    while (_serial.available()) {
-        _serial.read();
+    Stream* serial = getSerialStream();
+    if (serial) {
+        while (serial->available()) {
+            serial->read();
+        }
     }
 }
 
@@ -649,5 +685,41 @@ const char* RD03Radar::presenceStateToString(RD03PresenceState state) const {
         case RD03PresenceState::FAST_EXIT: return "FAST_EXIT";
         case RD03PresenceState::SAFETY_TIMEOUT: return "SAFETY_TIMEOUT";
         default: return "UNKNOWN";
+    }
+}
+
+// ============================================================================
+// Private Helper Methods for Serial Interface
+// ============================================================================
+
+Stream* RD03Radar::getSerialStream() const {
+    if (_serialType == SerialType::HARDWARE_SERIAL) {
+        return static_cast<HardwareSerial*>(_serialPtr);
+    } else if (_serialType == SerialType::SOFTWARE_SERIAL) {
+        return static_cast<SoftwareSerial*>(_serialPtr);
+    }
+    return nullptr;
+}
+
+void RD03Radar::serialBegin(uint32_t baudRate) {
+    if (_serialType == SerialType::HARDWARE_SERIAL) {
+        static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate);
+    } else if (_serialType == SerialType::SOFTWARE_SERIAL) {
+        static_cast<SoftwareSerial*>(_serialPtr)->begin(baudRate);
+    }
+}
+
+void RD03Radar::serialBegin(uint32_t baudRate, int rxPin, int txPin) {
+    if (_serialType == SerialType::HARDWARE_SERIAL) {
+        static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate, SERIAL_8N1, rxPin, txPin);
+    }
+    // SoftwareSerial doesn't need pins - they're set in constructor
+}
+
+void RD03Radar::serialEnd() {
+    if (_serialType == SerialType::HARDWARE_SERIAL) {
+        static_cast<HardwareSerial*>(_serialPtr)->end();
+    } else if (_serialType == SerialType::SOFTWARE_SERIAL) {
+        static_cast<SoftwareSerial*>(_serialPtr)->end();
     }
 }
