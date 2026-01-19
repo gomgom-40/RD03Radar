@@ -1,10 +1,10 @@
 # RD03Radar Library for Arduino IDE
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Version](https://img.shields.io/badge/Version-1.0.0-blue.svg)](https://github.com/gomgom-40/RD03Radar)
+[![Arduino Library](https://www.ardu-badge.com/badge/RD03Radar.svg)](https://www.ardu-badge.com/RD03Radar)
 [![ESP32](https://img.shields.io/badge/ESP32-Supported-green.svg)](https://www.espressif.com/en/products/som/esp32)
 [![ESP8266](https://img.shields.io/badge/ESP8266-Supported-green.svg)](https://github.com/esp8266/Arduino)
-[![Arduino](https://img.shields.io/badge/Arduino-Compatible-blue.svg)](https://www.arduino.cc/)
+[![ESPHome](https://img.shields.io/badge/ESPHome-Compatible-blue.svg)](https://esphome.io/)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-Compatible-orange.svg)](https://platformio.org/)
 [![Made in Egypt](https://img.shields.io/badge/Made%20in-Egypt-red.svg)](https://en.wikipedia.org/wiki/Egypt)
 
@@ -155,7 +155,11 @@ Add to `platformio.ini`:
 lib_deps =
     gomgom-40/RD03Radar
 ```
-
+## Method 5: ESPHome / Home Assistant Integration
+For a ready-to-use ESPHome configuration with advanced presence logic, safety timeouts, fast exit, and direct HA integration:
+👉 https://github.com/gomgom-40/RD-03_presence_radar
+(Includes pre-compiled binary, demo GIF, and full documentation)
+---
 ---
 
 ## 🔧 Hardware Requirements
