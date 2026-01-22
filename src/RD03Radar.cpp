@@ -567,17 +567,17 @@ const char* RD03Radar::presenceStateToString(RD03PresenceState state) const {
 }
 
 #if defined(RD03_ENABLE_MQTT)
+void RD03Radar::setupMQTT(const char* server, uint16_t port, const char* username, const char* password) {
+    _mqttEnabled = true;
+    _mqttServer = server;
+    _mqttPort = port;
+    _mqttUsername = username ? username : "";
+    _mqttPassword = password ? password : "";
+    _mqttClient.setClient(_wifiClient);
+}
 
 void RD03Radar::publishStatus() {
     if (!_mqttEnabled) return;
+    // Add MQTT publish logic later
 }
-
-void RD03Radar::setupMQTT(const char* server, uint16_t port, const char* username, const char* password) {
-    _mqttServer   = server;
-    _mqttPort     = port;
-    _mqttUsername = username ? username : "";
-    _mqttPassword = password ? password : "";
-    _mqttEnabled  = true;
-}
-
 #endif
