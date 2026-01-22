@@ -10,12 +10,12 @@
  * - WiFi connection
  *
  * Wiring:
- * ESP32/ESP8266  RD-03 Radar
- * -----------------  -----------
- * GPIO17/D5      ── TX
- * GPIO16/D6      ── RX
- * GND            ── GND
- * 5V             ── VCC
+ * ESP32/ESP8266 RD-03 Radar
+ * ----------------- -----------
+ * GPIO17/D5 ── TX
+ * GPIO16/D6 ── RX
+ * GND ── GND
+ * 5V ── VCC
  *
  * Web Interface:
  * - Main page: http://esp-ip/
@@ -25,12 +25,19 @@
  * Author: Mohamed Eid (gomgom-40)
  * Version: 1.1.0
  */
-
 #if defined(ESP8266)
   #include <SoftwareSerial.h>
 #endif
-
 #include <RD03Radar.h>
+
+// Platform-specific WiFi include
+#if defined(ESP32)
+  #include <WiFi.h>
+#elif defined(ESP8266)
+  #include <ESP8266WiFi.h>
+#else
+  #error "This example is designed for ESP32 or ESP8266 only"
+#endif
 
 // WiFi credentials
 const char* WIFI_SSID = "YOUR_WIFI_SSID";
@@ -51,7 +58,7 @@ RD03Config radarConfig = {
 // Create radar instance - use different Serial for different platforms
 #if defined(ESP8266)
   // ESP8266 uses SoftwareSerial to avoid conflict with Serial monitor
-  SoftwareSerial radarSerial(12, 14);  // RX, TX pins
+  SoftwareSerial radarSerial(12, 14); // RX, TX pins
   RD03Radar radar(radarSerial, radarConfig);
 #else
   // ESP32 uses Serial2 (HardwareSerial)
@@ -65,7 +72,6 @@ void setup() {
     Serial.begin(115200);
     pinMode(STATUS_LED, OUTPUT);
     digitalWrite(STATUS_LED, LOW);
-
     Serial.println("RD03Radar Web Server Example");
     Serial.println("============================");
 
@@ -80,7 +86,6 @@ void setup() {
         Serial.printf("Presence: %s, Distance: %.1f cm\n",
                      state == RD03PresenceState::PRESENCE_DETECTED ? "DETECTED" : "NONE",
                      distance);
-
         // Visual feedback
         digitalWrite(STATUS_LED, state == RD03PresenceState::PRESENCE_DETECTED ? HIGH : LOW);
     });
@@ -105,9 +110,9 @@ void setup() {
     // Initialize radar
     Serial.println("Initializing radar...");
     #if defined(ESP8266)
-      if (radar.begin()) {  // ESP8266 uses SoftwareSerial (already initialized)
+      if (radar.begin()) { // ESP8266 uses SoftwareSerial (already initialized)
     #else
-      if (radar.begin(16, 17)) {  // ESP32 uses HardwareSerial with custom pins
+      if (radar.begin(16, 17)) { // ESP32 uses HardwareSerial with custom pins
     #endif
         Serial.println("✅ Radar initialized successfully!");
         Serial.println("Starting web server...");
@@ -143,16 +148,13 @@ void loop() {
 
 void setupWiFi() {
     Serial.printf("Connecting to WiFi: %s\n", WIFI_SSID);
-
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
         delay(500);
         Serial.print(".");
         attempts++;
     }
-
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("\nWiFi connected!");
         Serial.printf("IP address: %s\n", WiFi.localIP().toString().c_str());
