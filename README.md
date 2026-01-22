@@ -1,9 +1,12 @@
 # RD03Radar Library for Arduino IDE
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)](https://github.com/gomgom-40/RD03Radar)
 [![Arduino Library](https://www.ardu-badge.com/badge/RD03Radar.svg)](https://www.ardu-badge.com/RD03Radar)
 [![ESP32](https://img.shields.io/badge/ESP32-Supported-green.svg)](https://www.espressif.com/en/products/som/esp32)
 [![ESP8266](https://img.shields.io/badge/ESP8266-Supported-green.svg)](https://github.com/esp8266/Arduino)
+[![MQTT](https://img.shields.io/badge/MQTT-Supported-brightgreen.svg)](https://mqtt.org/)
+[![Web Server](https://img.shields.io/badge/Web_Server-Included-blue.svg)](https://github.com/gomgom-40/RD03Radar)
 [![ESPHome](https://img.shields.io/badge/ESPHome-Compatible-blue.svg)](https://esphome.io/)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-Compatible-orange.svg)](https://platformio.org/)
 [![Made in Egypt](https://img.shields.io/badge/Made%20in-Egypt-red.svg)](https://en.wikipedia.org/wiki/Egypt)
@@ -59,6 +62,42 @@
 - 💡 **Lighting Control** - Automated room lighting
 - 🤖 **IoT Projects** - Custom presence-based applications
 - 🏭 **Industrial** - Occupancy detection, automation
+
+---
+
+## 🚀 What's New in v1.1.0
+
+### 📡 **MQTT Integration** - IoT Connectivity
+```cpp
+// Connect to MQTT broker
+radar.setupMQTT("192.168.1.100", 1883);
+radar.connectMQTT();
+
+// Publish status automatically
+radar.publishStatus(); // JSON: {"presence":true,"distance":125.5,"state":"PRESENCE_DETECTED"}
+```
+
+### 🌐 **Web Server Interface** - Local Control
+```cpp
+// Start web server on port 80
+radar.setupWebServer(80);
+radar.startWebServer();
+
+// Access at: http://esp-ip/
+// API: http://esp-ip/api/status
+```
+
+### 🔄 **Enhanced Features**
+- **Multi-Protocol Support**: MQTT + Web Server simultaneously
+- **Automatic Reconnection**: Smart retry logic for network issues
+- **REST API**: JSON endpoints for status and control
+- **Real-time Monitoring**: Live status updates
+- **Remote Control**: Control via MQTT commands or web interface
+
+### 📱 **New Examples**
+- `MQTT_Example.ino` - Complete MQTT integration
+- `WebServer_Example.ino` - Web interface demo
+- `Full_Features_Example.ino` - Combined capabilities
 
 ---
 
@@ -121,6 +160,73 @@ void loop() {
 **🎉 That's it! Your smart presence detector is ready!**
 
 ---
+
+## 📡 MQTT Setup (Optional)
+
+### Install PubSubClient Library
+```bash
+# Arduino IDE Library Manager
+1. Sketch → Include Library → Manage Libraries
+2. Search "PubSubClient" → Install
+```
+
+### MQTT Broker Setup
+```cpp
+// Add to your code after WiFi setup
+radar.setupMQTT("192.168.1.100", 1883);  // MQTT broker IP and port
+radar.connectMQTT();
+
+// Publish status every 30 seconds
+if (millis() - lastPublish > 30000) {
+    radar.publishStatus();
+}
+```
+
+### MQTT Topics
+- **Published**: `rd03radar/status` - JSON status updates
+- **Subscribed**: `rd03radar/commands` - Control commands
+
+### Available Commands
+```bash
+# Send via MQTT to rd03radar/commands
+automatic    # Switch to automatic mode
+force_on     # Force lights ON
+force_off    # Force lights OFF
+reset        # Reset presence detection
+```
+
+---
+
+## 🌐 Web Server Setup (Optional)
+
+### Enable Web Server
+```cpp
+// Add to setup() after WiFi connection
+radar.setupWebServer(80);    // Port 80
+radar.startWebServer();
+
+// Print local IP
+Serial.print("Web server: http://");
+Serial.println(WiFi.localIP());
+```
+
+### Web Interface
+- **Main Page**: `http://esp-ip/` - Control panel with buttons
+- **API Status**: `http://esp-ip/api/status` - JSON status
+- **API Control**: `POST http://esp-ip/api/command` - Send commands
+
+### Available Commands (via POST)
+```javascript
+// JavaScript example
+fetch('/api/command', {
+    method: 'POST',
+    body: 'automatic'  // or 'force_on', 'force_off', 'reset'
+});
+```
+
+---
+
+## 🔧 Advanced Configuration Examples
 
 ## 📦 Installation (Detailed)
 
@@ -237,6 +343,25 @@ RD03Status getStatus() const;
 bool isOperational() const;
 uint32_t getUptime() const;
 uint32_t getLastActivityTime() const;
+```
+
+#### MQTT Support (ESP32/ESP8266 only)
+```cpp
+void setupMQTT(const char* server, uint16_t port = 1883, const char* username = nullptr, const char* password = nullptr);
+void connectMQTT();
+void disconnectMQTT();
+bool isMQTTConnected() const;
+void publishStatus();
+void subscribeCommands();
+void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> callback);
+```
+
+#### Web Server Support (ESP32/ESP8266 only)
+```cpp
+void setupWebServer(uint16_t port = 80);
+void startWebServer();
+void stopWebServer();
+bool isWebServerRunning() const;
 ```
 
 #### Callbacks
@@ -434,6 +559,28 @@ void loop() {
 }
 ```
 
+### MQTT Topics
+- **Published**: `rd03radar/status` - JSON status updates
+  ```json
+  {
+    "presence": true,
+    "distance": 125.5,
+    "state": "PRESENCE_DETECTED",
+    "uptime": 3600,
+    "operational": true
+  }
+  ```
+- **Subscribed**: `rd03radar/commands` - Control commands
+  - `"automatic"` - Switch to automatic mode
+  - `"force_on"` - Force lights ON
+  - `"force_off"` - Force lights OFF
+  - `"reset"` - Reset presence detection
+
+### Web API Endpoints
+- **GET** `/` - Main control interface (HTML page)
+- **GET** `/api/status` - JSON status information
+- **POST** `/api/command` - Execute control commands
+
 ---
 
 ## 📊 Performance Specifications
@@ -489,12 +636,27 @@ This library is licensed under the MIT License - see the LICENSE file for detail
 
 ## 🎯 Roadmap
 
-- [ ] MQTT integration for IoT connectivity
+### ✅ **Completed in v1.1.0**
+- [x] MQTT integration for IoT connectivity
+- [x] Web server interface for local control
+- [x] REST API for status monitoring
+- [x] Real-time status publishing
+- [x] Remote control via MQTT/Web
+
+### 🔄 **Planned for v1.2.0**
 - [ ] Multi-zone presence detection support
 - [ ] Energy monitoring features
 - [ ] Mobile app companion
 - [ ] Additional radar sensor support
 - [ ] Advanced calibration tools
+- [ ] Home Assistant integration
+- [ ] Data logging and analytics
+
+### 🚀 **Future Releases (v2.0+)**
+- [ ] Camera integration for visual verification
+- [ ] Machine learning for behavior analysis
+- [ ] Multi-room coordination
+- [ ] Commercial security features
 
 ---
 

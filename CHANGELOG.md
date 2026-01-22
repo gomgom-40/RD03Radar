@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-20
+
+### Added
+- 📡 **MQTT Integration** - Full MQTT support for IoT connectivity with status publishing and command subscription
+- 🌐 **Web Server Interface** - Built-in web control panel with real-time monitoring and API endpoints
+- 🔄 **Enhanced Connectivity** - Automatic MQTT reconnection with exponential backoff
+- 📊 **Advanced Monitoring** - Real-time status publishing via MQTT and web API
+- 🎮 **Remote Control** - Control radar settings and modes via MQTT commands or web interface
+- 📱 **REST API** - JSON API endpoints for status monitoring and command execution
+- 🔧 **Configuration Flexibility** - Runtime configuration changes via MQTT or web interface
+
+### Enhanced
+- 🚀 **Performance Improvements** - Optimized MQTT and web server processing
+- 🛡️ **Error Handling** - Better error recovery for network connectivity issues
+- 📈 **Status Reporting** - More detailed status information with uptime and diagnostics
+- 🔗 **Multi-Protocol Support** - Simultaneous MQTT and web server operation
+
+### New Examples
+- **MQTT_Example.ino** - Complete MQTT integration with broker connectivity
+- **WebServer_Example.ino** - Web interface demonstration with control panel
+- **Full_Features_Example.ino** - Combined MQTT + Web Server + Advanced monitoring
+
+### New API Methods
+- `setupMQTT()` - Configure MQTT connection parameters
+- `connectMQTT()` - Establish MQTT connection
+- `publishStatus()` - Publish current status to MQTT
+- `setupWebServer()` - Configure web server
+- `startWebServer()` - Start web interface
+- `isMQTTConnected()` - Check MQTT connection status
+- `isWebServerRunning()` - Check web server status
+
+### MQTT Topics
+- `rd03radar/status` - JSON status updates (published)
+- `rd03radar/commands` - Command messages (subscribed)
+
+### Web API Endpoints
+- `GET /` - Main control interface (HTML)
+- `GET /api/status` - JSON status information
+- `POST /api/command` - Execute control commands
+
+---
+
 ## [1.0.0] - 2026-01-18
 
 ### Added
