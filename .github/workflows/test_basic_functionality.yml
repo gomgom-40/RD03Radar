@@ -49,6 +49,20 @@ jobs:
         [ -f ~/Arduino/libraries/RD03Radar/RD03Radar.cpp ] || exit 1
         echo "✅ Library structure verified"
 
+    - name: Pre-build library with MQTT enabled
+      run: |
+        mkdir -p /tmp/dummy
+        cat > /tmp/dummy/dummy.ino << 'EOF'
+        #include <RD03Radar.h>
+        void setup() {}
+        void loop() {}
+        EOF
+        arduino-cli compile --fqbn esp8266:esp8266:generic \
+          --library . \
+          -D RD03_ENABLE_MQTT \
+          /tmp/dummy/dummy.ino
+        echo "✅ Library pre-built with RD03_ENABLE_MQTT defined"
+
     - name: Test header file compilation
       run: |
         cat > /tmp/test_sketch.ino << 'EOF'
@@ -72,11 +86,10 @@ jobs:
         arduino-cli compile --fqbn esp8266:esp8266:generic examples/BasicPresenceDetection/BasicPresenceDetection.ino
         echo "✅ Basic example compilation successful"
 
-    - name: Compile MQTT Example with MQTT enabled
+    - name: Compile MQTT Example
       run: |
         arduino-cli compile --fqbn esp8266:esp8266:generic \
           --library . \
-          -D RD03_ENABLE_MQTT \
           examples/MQTT_Example/MQTT_Example.ino
         echo "✅ MQTT example compiled successfully"
 
