@@ -26,7 +26,7 @@
  * Version: 1.1.0
  */
 
-// Required to enable MQTT support in RD03Radar library
+// REQUIRED: Enable MQTT support in the RD03Radar library
 #define RD03_ENABLE_MQTT
 
 #if defined(ESP8266)
@@ -35,7 +35,7 @@
 
 #include <RD03Radar.h>
 
-// Platform-specific WiFi include
+// Platform-specific WiFi library
 #if defined(ESP32)
   #include <WiFi.h>
 #elif defined(ESP8266)
@@ -44,14 +44,15 @@
   #error "This example is intended for ESP32 or ESP8266 only"
 #endif
 
-// WiFi credentials - CHANGE THESE!
+// ──────────────────────────────────────────────
+// WiFi & MQTT Configuration - CHANGE THESE!
+// ──────────────────────────────────────────────
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
-// MQTT broker settings - CHANGE SERVER IP/HOSTNAME!
-const char* MQTT_SERVER   = "192.168.1.100";  // e.g., "broker.hivemq.com" or local IP
+const char* MQTT_SERVER   = "192.168.1.100";  // Change to your broker IP or hostname
 const uint16_t MQTT_PORT  = 1883;
-const char* MQTT_USERNAME = nullptr;  // Set if your broker requires authentication
+const char* MQTT_USERNAME = nullptr;          // Leave null if no auth
 const char* MQTT_PASSWORD = nullptr;
 
 // Radar configuration
@@ -63,9 +64,9 @@ RD03Config radarConfig = {
     .maxAbsenceTime   = 300
 };
 
-// Create radar instance - different Serial for platforms
+// Radar instance - different Serial based on platform
 #if defined(ESP8266)
-  SoftwareSerial radarSerial(12, 14);  // RX=D6=12, TX=D5=14
+  SoftwareSerial radarSerial(12, 14);  // RX = GPIO12 (D6), TX = GPIO14 (D5)
   RD03Radar radar(radarSerial, radarConfig);
 #else
   RD03Radar radar(Serial2, radarConfig);  // ESP32 Serial2 (GPIO16 RX, GPIO17 TX)
@@ -85,30 +86,30 @@ void setup() {
     // Connect to WiFi
     setupWiFi();
 
-    // Setup MQTT
+    // Setup MQTT connection
+    Serial.println("Setting up MQTT...");
     radar.setupMQTT(MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD);
 
-    // Presence change callback
+    // Presence callback
     radar.onPresenceChange([](RD03PresenceState state, float distance) {
         Serial.print("Presence: ");
         Serial.print(state == RD03PresenceState::PRESENCE_DETECTED ? "DETECTED" : "NONE");
         Serial.print(", Distance: ");
         Serial.print(distance);
         Serial.println(" cm");
-
         digitalWrite(STATUS_LED, state == RD03PresenceState::PRESENCE_DETECTED ? HIGH : LOW);
     });
 
-    // Status change callback
+    // Status callback
     radar.onStatusChange([](RD03Status status, const char* message) {
         Serial.print("Status: ");
         switch (status) {
-            case RD03Status::OK:              Serial.println("OK");              break;
-            case RD03Status::ERROR:           Serial.println("ERROR");           break;
-            case RD03Status::NO_SIGNAL:       Serial.println("NO_SIGNAL");       break;
+            case RD03Status::OK:              Serial.println("OK"); break;
+            case RD03Status::ERROR:           Serial.println("ERROR"); break;
+            case RD03Status::NO_SIGNAL:       Serial.println("NO_SIGNAL"); break;
             case RD03Status::BUFFER_OVERFLOW: Serial.println("BUFFER_OVERFLOW"); break;
-            case RD03Status::INVALID_DATA:    Serial.println("INVALID_DATA");    break;
-            case RD03Status::WATCHDOG_RESET:  Serial.println("WATCHDOG_RESET");  break;
+            case RD03Status::INVALID_DATA:    Serial.println("INVALID_DATA"); break;
+            case RD03Status::WATCHDOG_RESET:  Serial.println("WATCHDOG_RESET"); break;
         }
         if (message && strlen(message) > 0) {
             Serial.print("Message: ");
@@ -119,9 +120,9 @@ void setup() {
     // Initialize radar
     Serial.println("Initializing radar...");
 #if defined(ESP8266)
-    if (radar.begin()) {  // SoftwareSerial – no pins needed
+    if (radar.begin()) {  // SoftwareSerial - no pins needed
 #else
-    if (radar.begin(16, 17)) {  // HardwareSerial – RX=16, TX=17
+    if (radar.begin(16, 17)) {  // HardwareSerial - RX=16, TX=17
 #endif
         Serial.println("✅ Radar initialized successfully!");
         Serial.println("Waiting for MQTT connection and presence detection...");
@@ -129,7 +130,7 @@ void setup() {
         Serial.println("❌ Failed to initialize radar!");
         while (true) {
             delay(1000);
-            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));  // Blink on error
+            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));  // Blink error
         }
     }
 }
@@ -139,13 +140,13 @@ void loop() {
 
     // Publish status every 30 seconds
     static unsigned long lastPublish = 0;
-    if (millis() - lastPublish > 30000) {
+    if (millis() - lastPublish >= 30000) {
         lastPublish = millis();
         radar.publishStatus();
         Serial.println("Status published to MQTT");
     }
 
-    delay(10);  // Prevent overwhelming serial output
+    delay(10);  // Avoid flooding serial
 }
 
 void setupWiFi() {
@@ -155,7 +156,7 @@ void setupWiFi() {
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
+    while (WiFi.status() != WL_CONNECTED && attempts < 30) {
         delay(500);
         Serial.print(".");
         attempts++;
@@ -166,10 +167,7 @@ void setupWiFi() {
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP().toString());
     } else {
-        Serial.println("\nWiFi connection failed!");
-        while (true) {
-            delay(1000);
-            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));  // Blink on error
-        }
+        Serial.println("\nWiFi connection failed! Restarting...");
+        ESP.restart();
     }
 }
