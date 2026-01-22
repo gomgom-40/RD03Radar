@@ -3,14 +3,11 @@
  *
  * This example demonstrates the basic usage of the RD03Radar library
  * to detect presence and control an LED based on motion detection.
- * 
- * This is a basic example - does NOT require MQTT or WebServer features
  *
  * Hardware Required:
  * - ESP32 or ESP8266 board
  * - Ai-Thinker RD-03 mmWave radar sensor
  * - LED with resistor (optional)
- ...
  *
  * ESP32 Connections:
  * ESP32          RD-03 Radar       LED
