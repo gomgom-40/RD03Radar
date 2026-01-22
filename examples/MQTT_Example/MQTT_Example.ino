@@ -26,7 +26,7 @@
  * Version: 1.1.0
  */
 
-// REQUIRED: Enable MQTT support in the RD03Radar library
+// REQUIRED: Enable MQTT support in RD03Radar library
 #define RD03_ENABLE_MQTT
 
 #if defined(ESP8266)
@@ -35,7 +35,10 @@
 
 #include <RD03Radar.h>
 
-// Platform-specific WiFi library
+// Explicitly include PubSubClient for MQTT functions (required for ESP8266 linker)
+#include <PubSubClient.h>
+
+// Platform-specific WiFi
 #if defined(ESP32)
   #include <WiFi.h>
 #elif defined(ESP8266)
@@ -44,15 +47,14 @@
   #error "This example is intended for ESP32 or ESP8266 only"
 #endif
 
-// ──────────────────────────────────────────────
-// WiFi & MQTT Configuration - CHANGE THESE!
-// ──────────────────────────────────────────────
+// WiFi credentials - CHANGE THESE!
 const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
-const char* MQTT_SERVER   = "192.168.1.100";  // Change to your broker IP or hostname
+// MQTT broker settings - CHANGE THESE!
+const char* MQTT_SERVER   = "192.168.1.100";  // Your broker IP or hostname
 const uint16_t MQTT_PORT  = 1883;
-const char* MQTT_USERNAME = nullptr;          // Leave null if no auth
+const char* MQTT_USERNAME = nullptr;          // null if no auth
 const char* MQTT_PASSWORD = nullptr;
 
 // Radar configuration
@@ -64,15 +66,15 @@ RD03Config radarConfig = {
     .maxAbsenceTime   = 300
 };
 
-// Radar instance - different Serial based on platform
+// Radar instance
 #if defined(ESP8266)
-  SoftwareSerial radarSerial(12, 14);  // RX = GPIO12 (D6), TX = GPIO14 (D5)
+  SoftwareSerial radarSerial(12, 14);  // RX=12 (D6), TX=14 (D5)
   RD03Radar radar(radarSerial, radarConfig);
 #else
   RD03Radar radar(Serial2, radarConfig);  // ESP32 Serial2 (GPIO16 RX, GPIO17 TX)
 #endif
 
-// LED for visual feedback (optional)
+// LED for visual feedback
 const int STATUS_LED = 2;
 
 void setup() {
@@ -83,14 +85,13 @@ void setup() {
     Serial.println("\nRD03Radar MQTT Example");
     Serial.println("======================");
 
-    // Connect to WiFi
     setupWiFi();
 
-    // Setup MQTT connection
+    // Setup MQTT
     Serial.println("Setting up MQTT...");
     radar.setupMQTT(MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD);
 
-    // Presence callback
+    // Callbacks
     radar.onPresenceChange([](RD03PresenceState state, float distance) {
         Serial.print("Presence: ");
         Serial.print(state == RD03PresenceState::PRESENCE_DETECTED ? "DETECTED" : "NONE");
@@ -100,7 +101,6 @@ void setup() {
         digitalWrite(STATUS_LED, state == RD03PresenceState::PRESENCE_DETECTED ? HIGH : LOW);
     });
 
-    // Status callback
     radar.onStatusChange([](RD03Status status, const char* message) {
         Serial.print("Status: ");
         switch (status) {
@@ -120,17 +120,17 @@ void setup() {
     // Initialize radar
     Serial.println("Initializing radar...");
 #if defined(ESP8266)
-    if (radar.begin()) {  // SoftwareSerial - no pins needed
+    if (radar.begin()) {  // SoftwareSerial - no pins
 #else
     if (radar.begin(16, 17)) {  // HardwareSerial - RX=16, TX=17
 #endif
         Serial.println("✅ Radar initialized successfully!");
-        Serial.println("Waiting for MQTT connection and presence detection...");
+        Serial.println("Waiting for MQTT and presence...");
     } else {
-        Serial.println("❌ Failed to initialize radar!");
+        Serial.println("❌ Radar init failed!");
         while (true) {
             delay(1000);
-            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));  // Blink error
+            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));
         }
     }
 }
@@ -138,7 +138,6 @@ void setup() {
 void loop() {
     radar.loop();
 
-    // Publish status every 30 seconds
     static unsigned long lastPublish = 0;
     if (millis() - lastPublish >= 30000) {
         lastPublish = millis();
@@ -146,7 +145,7 @@ void loop() {
         Serial.println("Status published to MQTT");
     }
 
-    delay(10);  // Avoid flooding serial
+    delay(10);
 }
 
 void setupWiFi() {
@@ -164,10 +163,10 @@ void setupWiFi() {
 
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("\nWiFi connected!");
-        Serial.print("IP address: ");
+        Serial.print("IP: ");
         Serial.println(WiFi.localIP().toString());
     } else {
-        Serial.println("\nWiFi connection failed! Restarting...");
+        Serial.println("\nWiFi failed! Restarting...");
         ESP.restart();
     }
 }
