@@ -530,7 +530,6 @@ void RD03Radar::handleWebNotFound() {
 }
 
 #endif // ESP32 || ESP8266
-}
 
 bool RD03Radar::isOperational() const {
     if (!_initialized) return false;
