@@ -52,12 +52,9 @@
 <div align="center">
 <img src="screenshots/hardware_setup.jpg" alt="RD03Radar Hardware Setup" width="600">
 <p><em>Complete hardware setup with ESP32, RD-03 radar sensor, and relay module</em></p>
-</div>
 
-### Web Interface Control Panel
-<div align="center">
 <img src="screenshots/web_interface.jpg" alt="RD03Radar Web Interface" width="600">
-<p><em>Built-in web control panel for real-time monitoring and configuration</em></p>
+<p><em>Complete hardware setup with ESP32, RD-03 radar sensor, and relay module</em></p>
 </div>
 
 ---
