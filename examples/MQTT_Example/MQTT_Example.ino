@@ -1,13 +1,14 @@
 /**
- * RD03Radar MQTT Example - Fixed
+ * RD03Radar MQTT Example
  *
- * Demonstrates RD03Radar with MQTT for IoT.
+ * This example demonstrates how to use RD03Radar with MQTT for IoT connectivity.
+ * The sensor will publish its status and accept commands via MQTT broker.
  *
  * Hardware Required:
  * - ESP32 or ESP8266
  * - Ai-Thinker RD-03 mmWave Radar Sensor
  * - WiFi connection
- * - MQTT Broker
+ * - MQTT Broker (local or cloud)
  *
  * Wiring:
  * ESP32/ESP8266  RD-03 Radar
@@ -17,13 +18,15 @@
  * GND            ── GND
  * 5V             ── VCC
  *
+ * MQTT Topics:
+ * - rd03radar/status (published) - JSON status updates
+ * - rd03radar/commands (subscribed) - Command messages
+ *
  * Author: Mohamed Eid (gomgom-40)
- * Version: 1.1.1
+ * Version: 1.1.0
  */
 
 #include <RD03Radar.h>
-#include <ESP8266WiFi.h>  // For ESP8266, change to <WiFi.h> for ESP32
-#include <PubSubClient.h> // MQTT
 
 // WiFi credentials
 const char* WIFI_SSID = "YOUR_WIFI_SSID";
@@ -35,43 +38,27 @@ const uint16_t MQTT_PORT = 1883;
 const char* MQTT_USERNAME = nullptr;        // Set if authentication required
 const char* MQTT_PASSWORD = nullptr;        // Set if authentication required
 
-// Radar configuration (order matches RD03Config declaration)
+// Radar configuration
 RD03Config radarConfig = {
-    20.0f,   // minRange
-    500.0f,  // maxRange
-    3,       // sensitivity
-    30,      // holdTime
-    300,     // maxAbsenceTime
-    2,       // motionHitsRequired
-    10.0f    // motionThreshold
+    .minRange = 20.0f,
+    .maxRange = 500.0f,
+    .sensitivity = 3,
+    .holdTime = 30,
+    .maxAbsenceTime = 300
 };
 
-// Use Serial1 for ESP8266, Serial2 for ESP32
-RD03Radar radar(Serial1, radarConfig);  
+RD03Radar radar(Serial2, radarConfig);
 
 // LED for visual feedback (optional)
 const int STATUS_LED = 2;
-
-// Helper to convert status to string
-const char* statusToString(RD03Status status) {
-    switch (status) {
-        case RD03Status::OK: return "OK";
-        case RD03Status::ERROR: return "ERROR";
-        case RD03Status::NO_SIGNAL: return "NO_SIGNAL";
-        case RD03Status::BUFFER_OVERFLOW: return "BUFFER_OVERFLOW";
-        case RD03Status::INVALID_DATA: return "INVALID_DATA";
-        case RD03Status::WATCHDOG_RESET: return "WATCHDOG_RESET";
-        default: return "UNKNOWN";
-    }
-}
 
 void setup() {
     Serial.begin(115200);
     pinMode(STATUS_LED, OUTPUT);
     digitalWrite(STATUS_LED, LOW);
 
-    Serial.println("RD03Radar MQTT Example - Fixed");
-    Serial.println("==============================");
+    Serial.println("RD03Radar MQTT Example");
+    Serial.println("======================");
 
     // Connect to WiFi
     setupWiFi();
@@ -90,8 +77,14 @@ void setup() {
     });
 
     // Setup status callback
-    radar.onStatusChange([](RD03Status status, const char* msg) {
-        Serial.printf("Status: %s - %s\n", msg, statusToString(status));
+    radar.onStatusChange([](RD03Status status) {
+        Serial.printf("Status: %s\n",
+                     status == RD03Status::OK ? "OK" :
+                     status == RD03Status::ERROR ? "ERROR" :
+                     status == RD03Status::NO_SIGNAL ? "NO_SIGNAL" :
+                     status == RD03Status::BUFFER_OVERFLOW ? "BUFFER_OVERFLOW" :
+                     status == RD03Status::INVALID_DATA ? "INVALID_DATA" :
+                     "WATCHDOG_RESET");
     });
 
     // Initialize radar
@@ -114,6 +107,7 @@ void loop() {
         Serial.println("Status published to MQTT");
     }
 
+    // Small delay to prevent overwhelming the serial output
     delay(10);
 }
 
