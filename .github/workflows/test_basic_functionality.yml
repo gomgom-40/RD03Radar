@@ -78,7 +78,7 @@ jobs:
           --library . \
           -D RD03_ENABLE_MQTT \
           examples/MQTT_Example/MQTT_Example.ino
-        echo "✅ MQTT example compiled successfully with MQTT enabled"
+        echo "✅ MQTT example compiled successfully"
 
     - name: Validate library metadata
       run: |
