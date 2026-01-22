@@ -80,7 +80,7 @@ bool RD03Radar::begin(int rxPin, int txPin) {
     if (_initialized) return true;
     if (!_isHardwareSerial) return false;
 
-    // ESP32 HardwareSerial - pins are RX/TX, no SerialMode needed for 8N1
+    // ESP32 HardwareSerial begin (RX/TX pins only, no SerialMode for 8N1)
     _hardwareSerial->begin(_config.baudRate, SERIAL_8N1, rxPin, txPin);
     delay(RADAR_INIT_DELAY_MS);
 
@@ -98,7 +98,7 @@ bool RD03Radar::begin() {
     if (_initialized) return true;
     if (_isHardwareSerial) return false;
 
-    // ESP8266 SoftwareSerial already initialized by user
+    // ESP8266 SoftwareSerial is pre-initialized by user - no begin() call needed
     delay(RADAR_INIT_DELAY_MS);
 
     if (initializeRadar()) {
@@ -323,7 +323,6 @@ String RD03Radar::processUART() {
     }
 
     if (newLineFound && !_uartBuffer.empty()) {
-        // Safe String construction (compatible with ESP8266 core)
         String line;
         line.reserve(_uartBuffer.size());
         for (size_t i = 0; i < _uartBuffer.size(); ++i) {
@@ -354,7 +353,6 @@ String RD03Radar::processUART() {
 float RD03Radar::extractDistance(const String& message) {
     if (!message.startsWith("Range ")) return 0.0f;
 
-    // Find first digit after "Range "
     int pos = -1;
     for (int i = 6; i < message.length(); ++i) {
         if (isdigit(message[i])) {
