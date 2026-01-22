@@ -31,10 +31,8 @@ const uint8_t RADAR_INIT_CMD2[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x02, 0x00, 0x00, 0x0
 // Constructor & Destructor
 // ============================================================================
 
-// Constructor for HardwareSerial
 RD03Radar::RD03Radar(HardwareSerial& serial, const RD03Config& config)
-    : _serialType(SerialType::HARDWARE_SERIAL)
-    , _serialPtr(&serial)
+    : _serial(serial)
     , _config(config)
     , _presenceState(RD03PresenceState::NO_PRESENCE)
     , _controlMode(RD03ControlMode::AUTOMATIC)
@@ -50,40 +48,18 @@ RD03Radar::RD03Radar(HardwareSerial& serial, const RD03Config& config)
     , _motionHits(0)
     , _presenceActive(false)
     , _manualOffRecent(false)
+    #if defined(ESP32) || defined(ESP8266)
+    , _mqttClient(_wifiClient)
+    , _mqttEnabled(false)
+    , _webServer(_webPort)
+    , _webServerEnabled(false)
+    #endif
     , _initialized(false)
     , _lastByteTime(0)
 {
     // Initialize UART buffer
     _uartBuffer.reserve(MAX_BUFFER_SIZE);
 }
-
-#if defined(ESP8266) || defined(__AVR__)
-// Constructor for SoftwareSerial
-RD03Radar::RD03Radar(SoftwareSerial& serial, const RD03Config& config)
-    : _serialType(SerialType::SOFTWARE_SERIAL)
-    , _serialPtr(&serial)
-    , _config(config)
-    , _presenceState(RD03PresenceState::NO_PRESENCE)
-    , _controlMode(RD03ControlMode::AUTOMATIC)
-    , _status(RD03Status::OK)
-    , _startTime(0)
-    , _lastActivityTime(0)
-    , _lastPublishTime(0)
-    , _radarLastSeenTime(0)
-    , _watchdogActivityTime(0)
-    , _noTargetSince(0)
-    , _lastValidDistance(0.0f)
-    , _lastDistanceForMotion(0.0f)
-    , _motionHits(0)
-    , _presenceActive(false)
-    , _manualOffRecent(false)
-    , _initialized(false)
-    , _lastByteTime(0)
-{
-    // Initialize UART buffer
-    _uartBuffer.reserve(MAX_BUFFER_SIZE);
-}
-#endif
 
 RD03Radar::~RD03Radar() {
     end();
@@ -98,12 +74,8 @@ bool RD03Radar::begin(int rxPin, int txPin) {
         return true;
     }
 
-    // Initialize serial with hardware pins (ESP32) or without pins (ESP8266/other)
-    #if defined(ESP32)
-        serialBegin(_config.baudRate, rxPin, txPin);
-    #else
-        serialBegin(_config.baudRate);
-    #endif
+    // Initialize serial with hardware pins
+    _serial.begin(_config.baudRate, SERIAL_8N1, rxPin, txPin);
 
     // Wait for radar to power up
     delay(RADAR_INIT_DELAY_MS);
@@ -126,7 +98,7 @@ bool RD03Radar::begin() {
     }
 
     // Initialize serial (assumes it's already configured)
-    serialBegin(_config.baudRate);
+    _serial.begin(_config.baudRate);
 
     // Wait for radar to power up
     delay(RADAR_INIT_DELAY_MS);
@@ -145,9 +117,7 @@ bool RD03Radar::begin() {
 
 void RD03Radar::end() {
     if (_initialized) {
-        // Note: Stream class doesn't have end() method
-        // HardwareSerial and SoftwareSerial have it, but we can't call it safely
-        // from a Stream reference. Just mark as not initialized.
+        _serial.end();
         _initialized = false;
         updateStatus(RD03Status::OK, "Radar stopped");
     }
@@ -294,6 +264,200 @@ RD03Status RD03Radar::getStatus() const {
     return _status;
 }
 
+// ============================================================================
+// MQTT Support Implementation (ESP32/ESP8266 only)
+// ============================================================================
+#if defined(ESP32) || defined(ESP8266)
+
+void RD03Radar::setupMQTT(const char* server, uint16_t port, const char* username, const char* password) {
+    _mqttServer = server;
+    _mqttPort = port;
+    _mqttUsername = username ? username : "";
+    _mqttPassword = password ? password : "";
+    _mqttEnabled = true;
+
+    _mqttClient.setServer(server, port);
+    _mqttClient.setCallback([this](char* topic, uint8_t* payload, unsigned int length) {
+        this->handleMQTTMessage(topic, payload, length);
+    });
+}
+
+void RD03Radar::connectMQTT() {
+    if (!_mqttEnabled || _mqttServer.isEmpty()) return;
+
+    String clientId = "RD03Radar-";
+    clientId += String(random(0xffff), HEX);
+
+    bool connected = false;
+    if (_mqttUsername.length() > 0) {
+        connected = _mqttClient.connect(clientId.c_str(), _mqttUsername.c_str(), _mqttPassword.c_str());
+    } else {
+        connected = _mqttClient.connect(clientId.c_str());
+    }
+
+    if (connected) {
+        ESP_LOGI("MQTT", "Connected to MQTT broker");
+        subscribeCommands();
+        publishStatus();
+    } else {
+        ESP_LOGW("MQTT", "Failed to connect to MQTT broker");
+    }
+}
+
+void RD03Radar::disconnectMQTT() {
+    if (_mqttClient.connected()) {
+        _mqttClient.disconnect();
+        ESP_LOGI("MQTT", "Disconnected from MQTT broker");
+    }
+}
+
+bool RD03Radar::isMQTTConnected() const {
+    return _mqttClient.connected();
+}
+
+void RD03Radar::publishStatus() {
+    if (!_mqttClient.connected()) return;
+
+    String jsonMessage = "{";
+    jsonMessage += "\"presence\":" + String(_presenceActive ? "true" : "false") + ",";
+    jsonMessage += "\"distance\":" + String(_lastValidDistance, 1) + ",";
+    jsonMessage += "\"state\":\"" + getPresenceStateString() + "\",";
+    jsonMessage += "\"uptime\":" + String(getUptime()) + ",";
+    jsonMessage += "\"operational\":" + String(isOperational() ? "true" : "false");
+    jsonMessage += "}";
+
+    _mqttClient.publish("rd03radar/status", jsonMessage.c_str());
+}
+
+void RD03Radar::subscribeCommands() {
+    if (_mqttClient.connected()) {
+        _mqttClient.subscribe("rd03radar/commands");
+    }
+}
+
+void RD03Radar::setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> callback) {
+    _mqttCallback = callback;
+    _mqttClient.setCallback(callback);
+}
+
+void RD03Radar::handleMQTTMessage(char* topic, uint8_t* payload, unsigned int length) {
+    String message;
+    for (unsigned int i = 0; i < length; i++) {
+        message += (char)payload[i];
+    }
+
+    ESP_LOGI("MQTT", "Received command: %s", message.c_str());
+
+    if (message == "force_on") {
+        setControlMode(RD03ControlMode::FORCE_ON);
+    } else if (message == "force_off") {
+        setControlMode(RD03ControlMode::FORCE_OFF);
+    } else if (message == "automatic") {
+        setControlMode(RD03ControlMode::AUTOMATIC);
+    } else if (message == "reset") {
+        resetPresence();
+    }
+}
+
+#endif // ESP32 || ESP8266
+
+// ============================================================================
+// Web Server Support Implementation (ESP32/ESP8266 only)
+// ============================================================================
+#if defined(ESP32) || defined(ESP8266)
+
+void RD03Radar::setupWebServer(uint16_t port) {
+    _webPort = port;
+    _webServerEnabled = true;
+
+    _webServer.on("/", HTTP_GET, [this]() { handleWebRoot(); });
+    _webServer.on("/api/status", HTTP_GET, [this]() { handleAPIStatus(); });
+    _webServer.on("/api/command", HTTP_POST, [this]() { handleAPICommand(); });
+    _webServer.onNotFound([this]() { handleWebNotFound(); });
+}
+
+void RD03Radar::startWebServer() {
+    if (_webServerEnabled) {
+        _webServer.begin();
+        ESP_LOGI("WebServer", "Web server started on port %d", _webPort);
+    }
+}
+
+void RD03Radar::stopWebServer() {
+    if (_webServerEnabled) {
+        _webServer.stop();
+        ESP_LOGI("WebServer", "Web server stopped");
+    }
+}
+
+bool RD03Radar::isWebServerRunning() const {
+    return _webServerEnabled;
+}
+
+void RD03Radar::handleWebRoot() {
+    String html = "<!DOCTYPE html><html><head><title>RD03Radar Control</title>";
+    html += "<meta name='viewport' content='width=device-width, initial-scale=1'>";
+    html += "<style>body{font-family:Arial;text-align:center;margin:20px;}";
+    html += ".status{color:" + String(_presenceActive ? "green" : "red") + ";}";
+    html += "button{margin:10px;padding:10px 20px;font-size:16px;}</style>";
+    html += "</head><body><h1>RD03Radar Control Panel</h1>";
+
+    html += "<div class='status'><h2>Status: " + String(_presenceActive ? "PRESENCE DETECTED" : "NO PRESENCE") + "</h2></div>";
+    html += "<p>Distance: " + String(_lastValidDistance, 1) + " cm</p>";
+    html += "<p>State: " + getPresenceStateString() + "</p>";
+    html += "<p>Uptime: " + String(getUptime()) + " seconds</p>";
+
+    html += "<button onclick=\"sendCommand('automatic')\">Automatic</button>";
+    html += "<button onclick=\"sendCommand('force_on')\">Force ON</button>";
+    html += "<button onclick=\"sendCommand('force_off')\">Force OFF</button>";
+    html += "<button onclick=\"sendCommand('reset')\">Reset</button>";
+
+    html += "<script>function sendCommand(cmd){fetch('/api/command',{method:'POST',body:cmd});location.reload();}</script>";
+    html += "</body></html>";
+
+    _webServer.send(200, "text/html", html);
+}
+
+void RD03Radar::handleAPIStatus() {
+    String json = "{";
+    json += "\"presence\":" + String(_presenceActive ? "true" : "false") + ",";
+    json += "\"distance\":" + String(_lastValidDistance, 1) + ",";
+    json += "\"state\":\"" + getPresenceStateString() + "\",";
+    json += "\"uptime\":" + String(getUptime()) + ",";
+    json += "\"operational\":" + String(isOperational() ? "true" : "false");
+    json += "}";
+
+    _webServer.send(200, "application/json", json);
+}
+
+void RD03Radar::handleAPICommand() {
+    if (_webServer.hasArg("plain")) {
+        String command = _webServer.arg("plain");
+        ESP_LOGI("WebAPI", "Received command: %s", command.c_str());
+
+        if (command == "automatic") {
+            setControlMode(RD03ControlMode::AUTOMATIC);
+        } else if (command == "force_on") {
+            setControlMode(RD03ControlMode::FORCE_ON);
+        } else if (command == "force_off") {
+            setControlMode(RD03ControlMode::FORCE_OFF);
+        } else if (command == "reset") {
+            resetPresence();
+        }
+
+        _webServer.send(200, "text/plain", "OK");
+    } else {
+        _webServer.send(400, "text/plain", "Bad Request");
+    }
+}
+
+void RD03Radar::handleWebNotFound() {
+    _webServer.send(404, "text/plain", "Not Found");
+}
+
+#endif // ESP32 || ESP8266
+}
+
 bool RD03Radar::isOperational() const {
     if (!_initialized) return false;
     uint32_t now = millis();
@@ -358,35 +522,28 @@ String RD03Radar::processUART() {
     bool newLineFound = false;
 
     // Read available bytes
-    Stream* serial = getSerialStream();
-    if (serial) {
-        while (serial->available() && _uartBuffer.size() < MAX_BUFFER_SIZE) {
-            if (serial->readBytes(&byte, 1) > 0) {
-                uint32_t now = millis();
+    while (_serial.available() && _uartBuffer.size() < MAX_BUFFER_SIZE) {
+        if (_serial.readBytes(&byte, 1) > 0) {
+            uint32_t now = millis();
 
-                // Clear stale data if timeout exceeded
-                if (_lastByteTime && (now - _lastByteTime > UART_STALE_TIMEOUT_MS)) {
-                    _uartBuffer.clear();
-                }
+            // Clear stale data if timeout exceeded
+            if (_lastByteTime && (now - _lastByteTime > UART_STALE_TIMEOUT_MS)) {
+                _uartBuffer.clear();
+            }
 
-                _lastByteTime = now;
-                _uartBuffer.push_back(byte);
+            _lastByteTime = now;
+            _uartBuffer.push_back(byte);
 
-                if (byte == '\n') {
-                    newLineFound = true;
-                    break;
-                }
+            if (byte == '\n') {
+                newLineFound = true;
+                break;
             }
         }
-    } else {
-        // Serial not available
-        return "";
     }
 
     // Process complete line
     if (newLineFound && !_uartBuffer.empty()) {
-        String line;
-        line.concat((const char*)_uartBuffer.data(), _uartBuffer.size());
+        String line = String((char*)_uartBuffer.data(), _uartBuffer.size());
         _uartBuffer.clear();
 
         // Trim whitespace and remove carriage returns
@@ -409,10 +566,6 @@ String RD03Radar::processUART() {
         _uartBuffer.clear();
     }
 
-    // Default return for all other cases
-    return "";
-
-    // This should never be reached, but added for compiler safety
     return "";
 }
 
@@ -654,15 +807,12 @@ void RD03Radar::watchdogCheck() {
 // ============================================================================
 
 void RD03Radar::sendResetCommands() {
-    Stream* serial = getSerialStream();
-    if (!serial) return;
-
     // Send first initialization command
-    serial->write(RADAR_INIT_CMD1, sizeof(RADAR_INIT_CMD1));
+    _serial.write(RADAR_INIT_CMD1, sizeof(RADAR_INIT_CMD1));
     delay(100);
 
     // Send second initialization command
-    serial->write(RADAR_INIT_CMD2, sizeof(RADAR_INIT_CMD2));
+    _serial.write(RADAR_INIT_CMD2, sizeof(RADAR_INIT_CMD2));
 }
 
 void RD03Radar::clearUARTBuffer() {
@@ -670,11 +820,8 @@ void RD03Radar::clearUARTBuffer() {
     _lastByteTime = 0;
 
     // Clear any remaining data in serial buffer
-    Stream* serial = getSerialStream();
-    if (serial) {
-        while (serial->available()) {
-            serial->read();
-        }
+    while (_serial.available()) {
+        _serial.read();
     }
 }
 
@@ -700,58 +847,4 @@ const char* RD03Radar::presenceStateToString(RD03PresenceState state) const {
         case RD03PresenceState::SAFETY_TIMEOUT: return "SAFETY_TIMEOUT";
         default: return "UNKNOWN";
     }
-}
-
-// ============================================================================
-// Private Helper Methods for Serial Interface
-// ============================================================================
-
-Stream* RD03Radar::getSerialStream() const {
-    if (_serialType == SerialType::HARDWARE_SERIAL) {
-        return static_cast<HardwareSerial*>(_serialPtr);
-    }
-#if defined(ESP8266) || defined(__AVR__)
-    else if (_serialType == SerialType::SOFTWARE_SERIAL) {
-        return static_cast<SoftwareSerial*>(_serialPtr);
-    }
-#endif
-    return nullptr;
-}
-
-void RD03Radar::serialBegin(uint32_t baudRate) {
-    if (_serialType == SerialType::HARDWARE_SERIAL) {
-        static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate);
-    }
-#if defined(ESP8266) || defined(__AVR__)
-    else if (_serialType == SerialType::SOFTWARE_SERIAL) {
-        static_cast<SoftwareSerial*>(_serialPtr)->begin(baudRate);
-    }
-#endif
-}
-
-void RD03Radar::serialBegin(uint32_t baudRate, int rxPin, int txPin) {
-    if (_serialType == SerialType::HARDWARE_SERIAL) {
-        #if defined(ESP32)
-            // ESP32 HardwareSerial signature
-            static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate, SERIAL_8N1, rxPin, txPin);
-        #elif defined(ESP8266)
-            // ESP8266 HardwareSerial signature - pins are fixed for each serial instance
-            static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate);
-        #else
-            // Other platforms - try standard signature
-            static_cast<HardwareSerial*>(_serialPtr)->begin(baudRate);
-        #endif
-    }
-    // SoftwareSerial doesn't need pins - they're set in constructor
-}
-
-void RD03Radar::serialEnd() {
-    if (_serialType == SerialType::HARDWARE_SERIAL) {
-        static_cast<HardwareSerial*>(_serialPtr)->end();
-    }
-#if defined(ESP8266) || defined(__AVR__)
-    else if (_serialType == SerialType::SOFTWARE_SERIAL) {
-        static_cast<SoftwareSerial*>(_serialPtr)->end();
-    }
-#endif
 }

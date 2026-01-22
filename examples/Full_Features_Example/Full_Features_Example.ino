@@ -14,12 +14,12 @@
  * - MQTT Broker (optional but recommended)
  *
  * Wiring:
- * ESP32/ESP8266 RD-03 Radar
- * ----------------- -----------
- * GPIO17/D5 ── TX
- * GPIO16/D6 ── RX
- * GND ── GND
- * 5V ── VCC
+ * ESP32/ESP8266  RD-03 Radar
+ * -----------------  -----------
+ * GPIO17/D5      ── TX
+ * GPIO16/D6      ── RX
+ * GND            ── GND
+ * 5V             ── VCC
  *
  * Features Demonstrated:
  * - Motion-based presence detection
@@ -31,19 +31,8 @@
  * Author: Mohamed Eid (gomgom-40)
  * Version: 1.1.0
  */
-#if defined(ESP8266)
-  #include <SoftwareSerial.h>
-#endif
-#include <RD03Radar.h>
 
-// Platform-specific WiFi include
-#if defined(ESP32)
-  #include <WiFi.h>
-#elif defined(ESP8266)
-  #include <ESP8266WiFi.h>
-#else
-  #error "This example is designed for ESP32 or ESP8266 only"
-#endif
+#include <RD03Radar.h>
 
 // WiFi credentials
 const char* WIFI_SSID = "YOUR_WIFI_SSID";
@@ -60,38 +49,31 @@ const uint16_t WEB_PORT = 80;
 
 // Radar configuration with optimized settings
 RD03Config radarConfig = {
-    .minRange = 20.0f, // Minimum detection range (cm)
-    .maxRange = 500.0f, // Maximum detection range (cm)
-    .sensitivity = 3, // Sensitivity level (1-5)
-    .holdTime = 30, // Hold time in seconds
-    .maxAbsenceTime = 300, // Safety timeout in seconds
-    .motionThreshold = 2.0f, // Motion detection threshold (cm)
-    .motionHitsRequired = 1, // Motion confirmation hits
-    .baudRate = 115200, // UART baud rate
-    .rxBufferSize = 255 // UART buffer size - max safe value for uint8_t
+    .minRange = 20.0f,           // Minimum detection range (cm)
+    .maxRange = 500.0f,          // Maximum detection range (cm)
+    .sensitivity = 3,            // Sensitivity level (1-5)
+    .holdTime = 30,              // Hold time in seconds
+    .maxAbsenceTime = 300,       // Safety timeout in seconds
+    .motionThreshold = 2.0f,     // Motion detection threshold (cm)
+    .motionHitsRequired = 1,     // Motion confirmation hits
+    .baudRate = 115200,          // UART baud rate
+    .rxBufferSize = 256          // UART buffer size
 };
 
-// Create radar instance - use different Serial for different platforms
-#if defined(ESP8266)
-  // ESP8266 uses SoftwareSerial to avoid conflict with Serial monitor
-  SoftwareSerial radarSerial(12, 14); // RX, TX pins
-  RD03Radar radar(radarSerial, radarConfig);
-#else
-  // ESP32 uses Serial2 (HardwareSerial)
-  RD03Radar radar(Serial2, radarConfig);
-#endif
+RD03Radar radar(Serial2, radarConfig);
 
 // Status LED for visual feedback
 const int STATUS_LED = 2;
 
 // Control variables
-bool useMQTT = true; // Set to false to disable MQTT
-bool useWebServer = true; // Set to false to disable web server
+bool useMQTT = true;  // Set to false to disable MQTT
+bool useWebServer = true;  // Set to false to disable web server
 
 void setup() {
     Serial.begin(115200);
     pinMode(STATUS_LED, OUTPUT);
     digitalWrite(STATUS_LED, LOW);
+
     Serial.println("RD03Radar Full Features Example");
     Serial.println("===============================");
 
@@ -115,29 +97,21 @@ void setup() {
 
     // Initialize radar
     Serial.println("Initializing radar...");
-    #if defined(ESP8266)
-      if (radar.begin()) { // ESP8266 uses SoftwareSerial (already initialized)
-    #else
-      if (radar.begin(16, 17)) { // ESP32 uses HardwareSerial with custom pins
-    #endif
-        Serial.println("✅ Radar initialized successfully!");
-        Serial.println("Starting services...");
+    if (radar.begin(16, 17)) {  // ESP32 pins (TX=17, RX=16)
+        Serial.println("✅ Radar initialized successfully");
     } else {
         Serial.println("❌ Failed to initialize radar!");
         while (1) {
-            delay(1000);
-            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED)); // Blink LED on error
+            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));
+            delay(500);
         }
     }
 
     // Start services
     if (useWebServer) {
         radar.startWebServer();
-        Serial.print("🌐 Web server started at: http://");
-        Serial.print(WiFi.localIP().toString());
-        Serial.print(":");
-        Serial.print(WEB_PORT);
-        Serial.println("/");
+        Serial.printf("🌐 Web server started at: http://%s:%d/\n",
+                      WiFi.localIP().toString().c_str(), WEB_PORT);
     }
 
     Serial.println("🚀 System ready!");
@@ -149,7 +123,7 @@ void loop() {
 
     // Publish MQTT status periodically
     static unsigned long lastMQTT = 0;
-    if (useMQTT && millis() - lastMQTT > 30000) { // Every 30 seconds
+    if (useMQTT && millis() - lastMQTT > 30000) {  // Every 30 seconds
         lastMQTT = millis();
         radar.publishStatus();
         Serial.println("📤 MQTT status published");
@@ -157,25 +131,23 @@ void loop() {
 
     // Print system status periodically
     static unsigned long lastStatus = 0;
-    if (millis() - lastStatus > 60000) { // Every minute
+    if (millis() - lastStatus > 60000) {  // Every minute
         lastStatus = millis();
         printSystemStatus();
     }
 
-    delay(10); // Small delay to prevent overwhelming
+    delay(10);  // Small delay to prevent overwhelming
 }
 
 void setupCallbacks() {
     // Presence change callback
     radar.onPresenceChange([](RD03PresenceState state, float distance) {
         const char* stateStr = getPresenceStateString(state);
-        Serial.print("👤 Presence: ");
-        Serial.print(stateStr);
-        Serial.print(" (");
-        Serial.print(distance);
-        Serial.println(" cm)");
+        Serial.printf("👤 Presence: %s (%.1f cm)\n", stateStr, distance);
+
         // Visual feedback
         digitalWrite(STATUS_LED, state == RD03PresenceState::PRESENCE_DETECTED ? HIGH : LOW);
+
         // Publish to MQTT immediately on presence change
         if (useMQTT) {
             radar.publishStatus();
@@ -183,20 +155,10 @@ void setupCallbacks() {
     });
 
     // Status change callback
-    radar.onStatusChange([](RD03Status status, const char* message) {
-        Serial.print("📊 Status: ");
-        switch (status) {
-            case RD03Status::OK: Serial.println("OK"); break;
-            case RD03Status::ERROR: Serial.println("ERROR"); break;
-            case RD03Status::NO_SIGNAL: Serial.println("NO_SIGNAL"); break;
-            case RD03Status::BUFFER_OVERFLOW: Serial.println("BUFFER_OVERFLOW"); break;
-            case RD03Status::INVALID_DATA: Serial.println("INVALID_DATA"); break;
-            case RD03Status::WATCHDOG_RESET: Serial.println("WATCHDOG_RESET"); break;
-        }
-        if (strlen(message) > 0) {
-            Serial.print("Message: ");
-            Serial.println(message);
-        }
+    radar.onStatusChange([](RD03Status status) {
+        const char* statusStr = getStatusString(status);
+        Serial.printf("📊 Status: %s\n", statusStr);
+
         // Flash LED on error
         if (status != RD03Status::OK) {
             for (int i = 0; i < 3; i++) {
@@ -209,22 +171,19 @@ void setupCallbacks() {
     });
 
     // Distance measurement callback (optional - for debugging)
-    radar.onDistanceMeasurement([](float distance, bool valid) {
-        // Only print if distance changed significantly and is valid
-        if (valid) {
-            static float lastPrinted = 0;
-            if (abs(distance - lastPrinted) >= 10.0f) {
-                Serial.print("📏 Distance: ");
-                Serial.print(distance);
-                Serial.println(" cm");
-                lastPrinted = distance;
-            }
+    radar.onDistanceMeasurement([](float distance) {
+        // Only print if distance changed significantly
+        static float lastPrinted = 0;
+        if (abs(distance - lastPrinted) >= 10.0f) {
+            Serial.printf("📏 Distance: %.1f cm\n", distance);
+            lastPrinted = distance;
         }
     });
 
     // Light control callback
     radar.onLightControl([](bool turnOn, const char* reason) {
         Serial.printf("💡 Light: %s (%s)\n", turnOn ? "ON" : "OFF", reason);
+
         // Publish status update
         if (useMQTT) {
             radar.publishStatus();
@@ -234,13 +193,16 @@ void setupCallbacks() {
 
 void setupWiFi() {
     Serial.printf("🔗 Connecting to WiFi: %s\n", WIFI_SSID);
+
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
         delay(500);
         Serial.print(".");
         attempts++;
     }
+
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("\n✅ WiFi connected!");
         Serial.printf("📡 IP address: %s\n", WiFi.localIP().toString().c_str());
@@ -253,16 +215,19 @@ void setupWiFi() {
 void printSystemStatus() {
     Serial.println("\n📈 System Status");
     Serial.println("===============");
-    Serial.printf("⏱️ Uptime: %lu seconds\n", radar.getUptime());
+    Serial.printf("⏱️  Uptime: %lu seconds\n", radar.getUptime());
     Serial.printf("📍 Distance: %.1f cm\n", radar.getDistance());
     Serial.printf("👤 Presence: %s\n", radar.getPresenceState() == RD03PresenceState::PRESENCE_DETECTED ? "DETECTED" : "NONE");
-    Serial.printf("⚙️ Operational: %s\n", radar.isOperational() ? "YES" : "NO");
+    Serial.printf("⚙️  Operational: %s\n", radar.isOperational() ? "YES" : "NO");
+
     if (useMQTT) {
         Serial.printf("📡 MQTT: %s\n", radar.isMQTTConnected() ? "CONNECTED" : "DISCONNECTED");
     }
+
     if (useWebServer) {
         Serial.printf("🌐 Web Server: %s\n", radar.isWebServerRunning() ? "RUNNING" : "STOPPED");
     }
+
     Serial.println("===============");
 }
 

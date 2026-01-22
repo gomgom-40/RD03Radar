@@ -44,21 +44,6 @@ resetRadar	KEYWORD2
 getVersion	KEYWORD2
 getInfo	KEYWORD2
 
-# MQTT Methods (ESP32/ESP8266 only)
-setupMQTT	KEYWORD2
-connectMQTT	KEYWORD2
-disconnectMQTT	KEYWORD2
-isMQTTConnected	KEYWORD2
-publishStatus	KEYWORD2
-subscribeCommands	KEYWORD2
-setMQTTCallback	KEYWORD2
-
-# Web Server Methods (ESP32/ESP8266 only)
-setupWebServer	KEYWORD2
-startWebServer	KEYWORD2
-stopWebServer	KEYWORD2
-isWebServerRunning	KEYWORD2
-
 # Constants
 AUTOMATIC	LITERAL1
 MANUAL_ON	LITERAL1

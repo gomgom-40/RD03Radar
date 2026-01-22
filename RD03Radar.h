@@ -3,9 +3,6 @@
 
 #include <Arduino.h>
 #include <HardwareSerial.h>
-#if defined(ESP8266) || defined(__AVR__)
-#include <SoftwareSerial.h>
-#endif
 #include <vector>
 #include <functional>
 
@@ -117,15 +114,6 @@ using DistanceCallback = std::function<void(float distance, bool valid)>;
 using LightControlCallback = std::function<void(bool turnOn, const char* reason)>;
 
 // ============================================================================
-// Serial Type Enum
-// ============================================================================
-
-enum class SerialType {
-    HARDWARE_SERIAL,
-    SOFTWARE_SERIAL
-};
-
-// ============================================================================
 // Main RD03Radar Class
 // ============================================================================
 
@@ -136,21 +124,11 @@ public:
     // ============================================================================
 
     /**
-     * @brief Constructor for HardwareSerial
-     * @param serial HardwareSerial interface for radar communication
+     * @brief Constructor
+     * @param serial UART interface for radar communication
      * @param config Radar configuration (optional)
      */
     RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
-
-#if defined(ESP8266) || defined(__AVR__)
-    /**
-     * @brief Constructor for SoftwareSerial
-     * @param serial SoftwareSerial interface for radar communication
-     * @param config Radar configuration (optional)
-     */
-    RD03Radar(SoftwareSerial& serial, const RD03Config& config = RD03Config());
-#endif
-
 
     /**
      * @brief Destructor
@@ -346,8 +324,7 @@ private:
     // Private Member Variables
     // ============================================================================
 
-    SerialType _serialType;                     // Type of serial interface
-    void* _serialPtr;                           // Pointer to serial interface
+    HardwareSerial& _serial;                    // UART interface
     RD03Config _config;                         // Current configuration
     RD03PresenceState _presenceState;           // Current presence state
     RD03ControlMode _controlMode;               // Current control mode
@@ -442,12 +419,6 @@ private:
     void watchdogCheck();
 
     /**
-     * @brief Initialize radar sensor
-     * @return true if initialization successful
-     */
-    bool initializeRadar();
-
-    /**
      * @brief Send radar reset commands
      */
     void sendResetCommands();
@@ -470,35 +441,6 @@ private:
      * @return State string
      */
     const char* presenceStateToString(RD03PresenceState state) const;
-
-    // ============================================================================
-    // Private Helper Methods for Serial Interface
-    // ============================================================================
-
-    /**
-     * @brief Get serial stream interface
-     * @return Pointer to Stream interface
-     */
-    Stream* getSerialStream() const;
-
-    /**
-     * @brief Initialize serial with baud rate
-     * @param baudRate Baud rate to use
-     */
-    void serialBegin(uint32_t baudRate);
-
-    /**
-     * @brief Initialize serial with baud rate and pins (HardwareSerial only)
-     * @param baudRate Baud rate to use
-     * @param rxPin RX pin
-     * @param txPin TX pin
-     */
-    void serialBegin(uint32_t baudRate, int rxPin, int txPin);
-
-    /**
-     * @brief End serial communication
-     */
-    void serialEnd();
 };
 
 #endif // RD03RADAR_H
