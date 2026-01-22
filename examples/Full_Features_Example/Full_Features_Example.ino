@@ -31,7 +31,7 @@
  * Author: Mohamed Eid (gomgom-40)
  * Version: 1.1.0
  */
-
+#include <WiFi.h>
 #if defined(ESP8266)
   #include <SoftwareSerial.h>
 #endif
