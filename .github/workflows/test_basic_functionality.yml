@@ -26,13 +26,13 @@ jobs:
 
     - name: Install ESP32 core
       run: |
-        arduino-cli config init --additional-urls "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
+        arduino-cli config init --overwrite --additional-urls "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
 
     - name: Install ESP8266 core
       run: |
-        arduino-cli config init --additional-urls "https://arduino.esp8266.com/stable/package_esp8266com_index.json"
+        arduino-cli config add board_manager.additional_urls "https://arduino.esp8266.com/stable/package_esp8266com_index.json"
         arduino-cli core update-index
         arduino-cli core install esp8266:esp8266
 
@@ -44,7 +44,7 @@ jobs:
     - name: Test library installation
       run: |
         mkdir -p ~/Arduino/libraries/RD03Radar
-        cp *.h *.cpp library.properties ~/Arduino/libraries/RD03Radar/
+        cp src/*.h src/*.cpp library.properties ~/Arduino/libraries/RD03Radar/
         [ -f ~/Arduino/libraries/RD03Radar/RD03Radar.h ] || exit 1
         [ -f ~/Arduino/libraries/RD03Radar/RD03Radar.cpp ] || exit 1
         echo "✅ Library structure verified"
@@ -53,29 +53,24 @@ jobs:
       run: |
         mkdir -p /tmp/dummy
         cat > /tmp/dummy/dummy.ino << 'EOF'
-        #include <RD03Radar.h>
-        void setup() {}
-        void loop() {}
-        EOF
-        arduino-cli compile --fqbn esp8266:esp8266:generic \
-          --library . \
-          -D RD03_ENABLE_MQTT \
-          /tmp/dummy/dummy.ino
-        echo "✅ Library pre-built with RD03_ENABLE_MQTT defined"
+#define RD03_ENABLE_MQTT
+#include <RD03Radar.h>
+void setup() {}
+void loop() {}
+EOF
+        arduino-cli compile --fqbn esp8266:esp8266:generic /tmp/dummy/dummy.ino
+        echo "✅ Library pre-built with RD03_ENABLE_MQTT"
 
     - name: Test header file compilation
       run: |
         cat > /tmp/test_sketch.ino << 'EOF'
-        #include <RD03Radar.h>
-        RD03Config config;
-        RD03Radar radar(Serial2, config);
-        void setup() {
-          radar.begin(16, 17);
-        }
-        void loop() {
-          radar.loop();
-        }
-        EOF
+#define RD03_ENABLE_MQTT
+#include <RD03Radar.h>
+RD03Config config;
+RD03Radar radar(Serial2, config);
+void setup() { radar.begin(16, 17); }
+void loop() { radar.loop(); }
+EOF
         arduino-cli compile --fqbn esp32:esp32:esp32 /tmp/test_sketch.ino
         arduino-cli compile --fqbn esp8266:esp8266:generic /tmp/test_sketch.ino
         echo "✅ Header compilation successful"
@@ -89,7 +84,7 @@ jobs:
     - name: Compile MQTT Example
       run: |
         arduino-cli compile --fqbn esp8266:esp8266:generic \
-          --library . \
+          -D RD03_ENABLE_MQTT \
           examples/MQTT_Example/MQTT_Example.ino
         echo "✅ MQTT example compiled successfully"
 
