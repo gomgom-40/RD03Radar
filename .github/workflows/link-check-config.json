@@ -5,6 +5,9 @@
     },
     {
       "pattern": "^https://www\\.espressif\\.com/en/products/som/esp32$"
+    },
+    {
+      "pattern": "^https://youtube\\.com/@RD03Radar$"
     }
   ],
   "replacementPatterns": [

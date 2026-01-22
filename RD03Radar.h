@@ -124,8 +124,15 @@ public:
     // ============================================================================
 
     /**
-     * @brief Constructor
-     * @param serial UART interface for radar communication (HardwareSerial, SoftwareSerial, etc.)
+     * @brief Constructor for HardwareSerial (ESP32 Serial2, etc.)
+     * @param serial HardwareSerial interface for radar communication
+     * @param config Radar configuration (optional)
+     */
+    RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
+
+    /**
+     * @brief Constructor for SoftwareSerial (ESP8266, etc.)
+     * @param serial SoftwareSerial interface for radar communication
      * @param config Radar configuration (optional)
      */
     RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
@@ -324,7 +331,9 @@ private:
     // Private Member Variables
     // ============================================================================
 
-    Stream& _serial;                             // UART interface
+    HardwareSerial* _hardwareSerial;           // HardwareSerial interface (ESP32)
+    Stream* _softwareSerial;                     // SoftwareSerial interface (ESP8266)
+    bool _isHardwareSerial;                      // Flag to track which serial type
     RD03Config _config;                         // Current configuration
     RD03PresenceState _presenceState;           // Current presence state
     RD03ControlMode _controlMode;               // Current control mode

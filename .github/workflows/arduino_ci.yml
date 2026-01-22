@@ -28,14 +28,14 @@ jobs:
     - name: Install ESP32 core
       if: matrix.board == 'esp32:esp32:esp32'
       run: |
-        arduino-cli config init --additional-urls "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
+        arduino-cli config init --overwrite --additional-urls "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
         arduino-cli core update-index
         arduino-cli core install esp32:esp32
 
     - name: Install ESP8266 core
       if: matrix.board == 'esp8266:esp8266:generic'
       run: |
-        arduino-cli config init --additional-urls "https://arduino.esp8266.com/stable/package_esp8266com_index.json"
+        arduino-cli config init --overwrite --additional-urls "https://arduino.esp8266.com/stable/package_esp8266com_index.json"
         arduino-cli core update-index
         arduino-cli core install esp8266:esp8266
 

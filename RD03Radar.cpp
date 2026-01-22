@@ -28,11 +28,55 @@ const uint8_t RADAR_INIT_CMD1[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x04, 0x00, 0x01, 0x0
 const uint8_t RADAR_INIT_CMD2[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x02, 0x00, 0x00, 0x01, 0x04, 0x03, 0x02, 0x01};
 
 // ============================================================================
+// Private Helper Methods
+// ============================================================================
+
+Stream* RD03Radar::getSerial() {
+    return _isHardwareSerial ? static_cast<Stream*>(_hardwareSerial) : _softwareSerial;
+}
+
+// ============================================================================
 // Constructor & Destructor
 // ============================================================================
 
+// HardwareSerial constructor (ESP32)
+RD03Radar::RD03Radar(HardwareSerial& serial, const RD03Config& config)
+    : _hardwareSerial(&serial)
+    , _softwareSerial(nullptr)
+    , _isHardwareSerial(true)
+    , _config(config)
+    , _presenceState(RD03PresenceState::NO_PRESENCE)
+    , _controlMode(RD03ControlMode::AUTOMATIC)
+    , _status(RD03Status::OK)
+    , _startTime(0)
+    , _lastActivityTime(0)
+    , _lastPublishTime(0)
+    , _radarLastSeenTime(0)
+    , _watchdogActivityTime(0)
+    , _noTargetSince(0)
+    , _lastValidDistance(0.0f)
+    , _lastDistanceForMotion(0.0f)
+    , _motionHits(0)
+    , _presenceActive(false)
+    , _manualOffRecent(false)
+    #if defined(ESP32) || defined(ESP8266)
+    , _mqttClient(_wifiClient)
+    , _mqttEnabled(false)
+    , _webServer(_webPort)
+    , _webServerEnabled(false)
+    #endif
+    , _initialized(false)
+    , _lastByteTime(0)
+{
+    // Initialize UART buffer
+    _uartBuffer.reserve(MAX_BUFFER_SIZE);
+}
+
+// SoftwareSerial constructor (ESP8266)
 RD03Radar::RD03Radar(Stream& serial, const RD03Config& config)
-    : _serial(serial)
+    : _hardwareSerial(nullptr)
+    , _softwareSerial(&serial)
+    , _isHardwareSerial(false)
     , _config(config)
     , _presenceState(RD03PresenceState::NO_PRESENCE)
     , _controlMode(RD03ControlMode::AUTOMATIC)
@@ -75,7 +119,12 @@ bool RD03Radar::begin(int rxPin, int txPin) {
     }
 
     // Initialize serial with hardware pins
-    _serial.begin(_config.baudRate, SERIAL_8N1, rxPin, txPin);
+    if (_isHardwareSerial) {
+        _hardwareSerial->begin(_config.baudRate, SERIAL_8N1, rxPin, txPin);
+    } else {
+        // SoftwareSerial is already initialized by user
+        // We can't call begin() on SoftwareSerial here
+    }
 
     // Wait for radar to power up
     delay(RADAR_INIT_DELAY_MS);
@@ -98,7 +147,12 @@ bool RD03Radar::begin() {
     }
 
     // Initialize serial (assumes it's already configured)
-    _serial.begin(_config.baudRate);
+    if (_isHardwareSerial) {
+        _hardwareSerial->begin(_config.baudRate);
+    } else {
+        // SoftwareSerial is already initialized by user
+        // We can't call begin() on SoftwareSerial here as it may already be running
+    }
 
     // Wait for radar to power up
     delay(RADAR_INIT_DELAY_MS);
@@ -117,7 +171,12 @@ bool RD03Radar::begin() {
 
 void RD03Radar::end() {
     if (_initialized) {
-        _serial.end();
+        if (_isHardwareSerial) {
+            _hardwareSerial->end();
+        } else {
+            // SoftwareSerial doesn't have end() method
+            // User is responsible for managing SoftwareSerial lifecycle
+        }
         _initialized = false;
         updateStatus(RD03Status::OK, "Radar stopped");
     }
@@ -522,8 +581,8 @@ String RD03Radar::processUART() {
     bool newLineFound = false;
 
     // Read available bytes
-    while (_serial.available() && _uartBuffer.size() < MAX_BUFFER_SIZE) {
-        if (_serial.readBytes(&byte, 1) > 0) {
+    while (getSerial()->available() && _uartBuffer.size() < MAX_BUFFER_SIZE) {
+        if (getSerial()->readBytes(&byte, 1) > 0) {
             uint32_t now = millis();
 
             // Clear stale data if timeout exceeded
@@ -543,7 +602,7 @@ String RD03Radar::processUART() {
 
     // Process complete line
     if (newLineFound && !_uartBuffer.empty()) {
-        String line = String((char*)_uartBuffer.data(), _uartBuffer.size());
+        String line = String((char*)_uartBuffer.data());
         _uartBuffer.clear();
 
         // Trim whitespace and remove carriage returns
@@ -808,11 +867,11 @@ void RD03Radar::watchdogCheck() {
 
 void RD03Radar::sendResetCommands() {
     // Send first initialization command
-    _serial.write(RADAR_INIT_CMD1, sizeof(RADAR_INIT_CMD1));
+    getSerial()->write(RADAR_INIT_CMD1, sizeof(RADAR_INIT_CMD1));
     delay(100);
 
     // Send second initialization command
-    _serial.write(RADAR_INIT_CMD2, sizeof(RADAR_INIT_CMD2));
+    getSerial()->write(RADAR_INIT_CMD2, sizeof(RADAR_INIT_CMD2));
 }
 
 void RD03Radar::clearUARTBuffer() {
@@ -820,8 +879,8 @@ void RD03Radar::clearUARTBuffer() {
     _lastByteTime = 0;
 
     // Clear any remaining data in serial buffer
-    while (_serial.available()) {
-        _serial.read();
+    while (getSerial()->available()) {
+        getSerial()->read();
     }
 }
 
