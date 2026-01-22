@@ -13,10 +13,13 @@
 #endif
 
 // ──────────────────────────────────────────────
-// Optional Features – Define in .ino files only when needed
+// Optional Features
 // ──────────────────────────────────────────────
+// To enable MQTT or WebServer, define ONE or BOTH in the .ino file BEFORE #include <RD03Radar.h>
+// Example in .ino:
 // #define RD03_ENABLE_MQTT
 // #define RD03_ENABLE_WEBSERVER
+// #include <RD03Radar.h>
 
 #if defined(RD03_ENABLE_MQTT)
   #if defined(ESP32) || defined(ESP8266)
@@ -93,45 +96,33 @@ using LightControlCallback = std::function<void(bool, const char*)>;
 // ============================================================================
 class RD03Radar {
 public:
-    // ──────────────────────────────────────────────
     // Constructors
-    // ──────────────────────────────────────────────
     RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
     RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
     ~RD03Radar();
 
-    // ──────────────────────────────────────────────
-    // Initialization
-    // ──────────────────────────────────────────────
-    bool begin();                           // For SoftwareSerial or pre-configured Stream (ESP8266)
+    // Initialization – two overloads
+    bool begin();                           // For SoftwareSerial / pre-configured Stream (ESP8266)
     bool begin(int rxPin, int txPin);       // For HardwareSerial (ESP32) – specify pins
     void end();
 
-    // ──────────────────────────────────────────────
     // Configuration
-    // ──────────────────────────────────────────────
     void setConfig(const RD03Config& config);
     RD03Config getConfig() const;
     void setRange(float minRange, float maxRange);
     void setSensitivity(uint8_t sensitivity);
     void setHoldTime(uint16_t holdTimeSeconds);
 
-    // ──────────────────────────────────────────────
     // Control & State
-    // ──────────────────────────────────────────────
     void setControlMode(RD03ControlMode mode);
     RD03ControlMode getControlMode() const;
     void manualLightControl(bool turnOn);
     void resetPresence();
 
-    // ──────────────────────────────────────────────
-    // Core Processing
-    // ──────────────────────────────────────────────
+    // Core
     void loop();
 
-    // ──────────────────────────────────────────────
-    // Status & Readings
-    // ──────────────────────────────────────────────
+    // Readings
     RD03PresenceState getPresenceState() const;
     String getPresenceStateString() const;
     float getDistance() const;
@@ -140,24 +131,18 @@ public:
     uint32_t getUptime() const;
     uint32_t getLastActivityTime() const;
 
-    // ──────────────────────────────────────────────
     // Callbacks
-    // ──────────────────────────────────────────────
     void onPresenceChange(PresenceCallback cb);
     void onStatusChange(StatusCallback cb);
     void onDistanceMeasurement(DistanceCallback cb);
     void onLightControl(LightControlCallback cb);
 
-    // ──────────────────────────────────────────────
     // Utility
-    // ──────────────────────────────────────────────
     void resetRadar();
     static const char* getVersion();
     static const char* getInfo();
 
-    // ──────────────────────────────────────────────
     // Optional: MQTT Support
-    // ──────────────────────────────────────────────
 #if defined(RD03_ENABLE_MQTT)
     void setupMQTT(const char* server, uint16_t port = 1883,
                    const char* username = nullptr, const char* password = nullptr);
@@ -169,9 +154,7 @@ public:
     void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> cb);
 #endif
 
-    // ──────────────────────────────────────────────
     // Optional: WebServer Support
-    // ──────────────────────────────────────────────
 #if defined(RD03_ENABLE_WEBSERVER)
     void setupWebServer(uint16_t port = 80);
     void startWebServer();
@@ -180,9 +163,6 @@ public:
 #endif
 
 private:
-    // ──────────────────────────────────────────────
-    // Internal Members
-    // ──────────────────────────────────────────────
     HardwareSerial* _hardwareSerial = nullptr;
     Stream*         _stream         = nullptr;
     bool            _isHardwareSerial = false;
@@ -237,9 +217,7 @@ private:
 #endif
 #endif
 
-    // ──────────────────────────────────────────────
-    // Private Helper Methods
-    // ──────────────────────────────────────────────
+    // Private helpers
     Stream* getSerial() { return _stream; }
 
     String processUART();
