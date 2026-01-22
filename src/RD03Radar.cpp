@@ -80,8 +80,14 @@ bool RD03Radar::begin(int rxPin, int txPin) {
     if (_initialized) return true;
     if (!_isHardwareSerial) return false;
 
-    // ESP32 HardwareSerial begin (RX/TX pins only, no SerialMode for 8N1)
+#if defined(ESP32)
+    // ESP32: begin with RX/TX pins
     _hardwareSerial->begin(_config.baudRate, SERIAL_8N1, rxPin, txPin);
+#else
+    // ESP8266: begin without pins (HardwareSerial on ESP8266 uses default pins or pre-configured)
+    _hardwareSerial->begin(_config.baudRate);
+#endif
+
     delay(RADAR_INIT_DELAY_MS);
 
     if (initializeRadar()) {
@@ -98,7 +104,7 @@ bool RD03Radar::begin() {
     if (_initialized) return true;
     if (_isHardwareSerial) return false;
 
-    // ESP8266 SoftwareSerial is pre-initialized by user - no begin() call needed
+    // ESP8266 SoftwareSerial is already initialized by user
     delay(RADAR_INIT_DELAY_MS);
 
     if (initializeRadar()) {
