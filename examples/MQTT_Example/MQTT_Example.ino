@@ -27,14 +27,15 @@
  */
 
 // REQUIRED: Enable MQTT support in RD03Radar library
-#define RD03_ENABLE_MQTT
+
 
 #include <PubSubClient.h>
 
 #if defined(ESP8266)
   #include <SoftwareSerial.h>
 #endif
-
+#define RD03_ENABLE_MQTT
+#define RD03_ENABLE_WEBSERVER
 #include <RD03Radar.h>
 
 // Explicitly include PubSubClient for MQTT functions (required for ESP8266 linker)
