@@ -315,6 +315,18 @@ RD03PresenceState RD03Radar::getPresenceState() const {
     return _presenceState;
 }
 
+String RD03Radar::getPresenceStateString() const {
+    switch (_presenceState) {
+        case RD03PresenceState::NO_PRESENCE: return "No Presence";
+        case RD03PresenceState::PRESENCE_DETECTED: return "Presence Detected";
+        case RD03PresenceState::MOTION_DETECTED: return "Motion Detected";
+        case RD03PresenceState::MAINTAINING: return "Maintaining";
+        case RD03PresenceState::FAST_EXIT: return "Fast Exit";
+        case RD03PresenceState::SAFETY_TIMEOUT: return "Safety Timeout";
+        default: return "Unknown";
+    }
+}
+
 float RD03Radar::getDistance() const {
     return _lastValidDistance;
 }
@@ -355,22 +367,22 @@ void RD03Radar::connectMQTT() {
     }
 
     if (connected) {
-        ESP_LOGI("MQTT", "Connected to MQTT broker");
+        Serial.println("MQTT: Connected to MQTT broker");
         subscribeCommands();
         publishStatus();
     } else {
-        ESP_LOGW("MQTT", "Failed to connect to MQTT broker");
+        Serial.println("MQTT: Failed to connect to MQTT broker");
     }
 }
 
 void RD03Radar::disconnectMQTT() {
     if (_mqttClient.connected()) {
         _mqttClient.disconnect();
-        ESP_LOGI("MQTT", "Disconnected from MQTT broker");
+        Serial.println("MQTT: Disconnected from MQTT broker");
     }
 }
 
-bool RD03Radar::isMQTTConnected() const {
+bool RD03Radar::isMQTTConnected() {
     return _mqttClient.connected();
 }
 
@@ -405,7 +417,8 @@ void RD03Radar::handleMQTTMessage(char* topic, uint8_t* payload, unsigned int le
         message += (char)payload[i];
     }
 
-    ESP_LOGI("MQTT", "Received command: %s", message.c_str());
+    Serial.print("MQTT: Received command: ");
+    Serial.println(message);
 
     if (message == "force_on") {
         setControlMode(RD03ControlMode::FORCE_ON);
@@ -438,14 +451,15 @@ void RD03Radar::setupWebServer(uint16_t port) {
 void RD03Radar::startWebServer() {
     if (_webServerEnabled) {
         _webServer.begin();
-        ESP_LOGI("WebServer", "Web server started on port %d", _webPort);
+        Serial.print("WebServer: Started on port ");
+        Serial.println(_webPort);
     }
 }
 
 void RD03Radar::stopWebServer() {
     if (_webServerEnabled) {
         _webServer.stop();
-        ESP_LOGI("WebServer", "Web server stopped");
+        Serial.println("WebServer: Stopped");
     }
 }
 
@@ -492,7 +506,8 @@ void RD03Radar::handleAPIStatus() {
 void RD03Radar::handleAPICommand() {
     if (_webServer.hasArg("plain")) {
         String command = _webServer.arg("plain");
-        ESP_LOGI("WebAPI", "Received command: %s", command.c_str());
+        Serial.print("WebAPI: Received command: ");
+        Serial.println(command);
 
         if (command == "automatic") {
             setControlMode(RD03ControlMode::AUTOMATIC);

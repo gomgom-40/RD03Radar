@@ -259,6 +259,12 @@ public:
     RD03PresenceState getPresenceState() const;
 
     /**
+     * @brief Get presence state as string
+     * @return Presence state string
+     */
+    String getPresenceStateString() const;
+
+    /**
      * @brief Get current distance reading
      * @return Distance in cm (0 = no target)
      */
@@ -364,7 +370,7 @@ public:
      * @brief Check if connected to MQTT broker
      * @return true if connected
      */
-    bool isMQTTConnected() const;
+    bool isMQTTConnected();
 
     /**
      * @brief Publish current status to MQTT
@@ -457,6 +463,7 @@ private:
     String _mqttUsername;                       // MQTT username
     String _mqttPassword;                       // MQTT password
     bool _mqttEnabled;                          // MQTT enabled flag
+    std::function<void(char*, uint8_t*, unsigned int)> _mqttCallback; // MQTT message callback
 
     // Web Server variables
     uint16_t _webPort;                          // Web server port
