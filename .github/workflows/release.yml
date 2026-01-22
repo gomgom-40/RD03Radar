@@ -20,8 +20,9 @@ jobs:
     - name: Create ZIP archive
       run: |
         zip -r RD03Radar-${{ steps.get_version.outputs.VERSION }}.zip . \
-          -x "*.git*" "*.github*" "*workflows*" "*screenshots*" "*.md" "LICENSE" \
-          -x "*CONTRIBUTING*" "*CODE_OF_CONDUCT*" "*SECURITY*" "*release_checklist*"
+          -x "*.git*" "*.github*" "*workflows*" "*ISSUE_TEMPLATE*" "*screenshots*" "*.md" "LICENSE" \
+          -x "*CONTRIBUTING*" "*CODE_OF_CONDUCT*" "*SECURITY*" "*release_checklist*" "*.yml" "*.json" \
+          -x ".gitattributes" ".gitignore"
 
     - name: Create Release
       id: create_release

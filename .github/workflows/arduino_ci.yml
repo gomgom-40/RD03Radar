@@ -45,6 +45,19 @@ jobs:
     - name: Install ArduinoJson library
       run: arduino-cli lib install ArduinoJson
 
+    - name: Install RD03Radar library
+      run: arduino-cli lib install --git-url https://github.com/gomgom-40/RD03Radar.git
+
+    - name: Test local compilation (with local library)
+      run: |
+        # Create temporary library directory
+        mkdir -p ~/Arduino/libraries/RD03Radar
+        cp -r src/* ~/Arduino/libraries/RD03Radar/
+        cp library.properties ~/Arduino/libraries/RD03Radar/
+
+        # Test compilation with local library
+        arduino-cli compile --fqbn ${{ matrix.board }} examples/BasicPresenceDetection/BasicPresenceDetection.ino
+
     - name: Compile BasicPresenceDetection example
       run: |
         arduino-cli compile --fqbn ${{ matrix.board }} examples/BasicPresenceDetection/BasicPresenceDetection.ino
@@ -81,6 +94,21 @@ jobs:
 
     - name: Run Arduino Lint
       run: arduino-lint --library-manager update --compliance strict
+
+    - name: Validate library.properties
+      run: |
+        if [ ! -f "library.properties" ]; then
+          echo "❌ library.properties not found!"
+          exit 1
+        fi
+
+        # Check required fields
+        grep -q "^name=" library.properties || (echo "❌ name field missing" && exit 1)
+        grep -q "^version=" library.properties || (echo "❌ version field missing" && exit 1)
+        grep -q "^author=" library.properties || (echo "❌ author field missing" && exit 1)
+        grep -q "^maintainer=" library.properties || (echo "❌ maintainer field missing" && exit 1)
+
+        echo "✅ library.properties validation passed"
 
   documentation:
     runs-on: ubuntu-latest
