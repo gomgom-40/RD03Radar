@@ -6,15 +6,15 @@
 #include <vector>
 #include <functional>
 
-// Platform-specific forward declarations for MQTT and Web Server
+// Platform-specific includes for MQTT and Web Server
+// Only included when ESP32/ESP8266 is defined to avoid requiring them for basic examples
 #if defined(ESP32) || defined(ESP8266)
     #include <WiFiClient.h>
-    // Forward declaration for PubSubClient to avoid requiring it for basic examples
-    class PubSubClient;
+    #include <PubSubClient.h>
     #if defined(ESP32)
-        class WebServer;
+        #include <WebServer.h>
     #elif defined(ESP8266)
-        class ESP8266WebServer;
+        #include <ESP8266WebServer.h>
     #endif
 #endif
 
@@ -459,7 +459,7 @@ private:
     // MQTT variables (only for ESP32/ESP8266)
     #if defined(ESP32) || defined(ESP8266)
         WiFiClient _wifiClient;                     // WiFi client for MQTT
-        PubSubClient* _mqttClient;                  // MQTT client (pointer to avoid requiring include)
+        PubSubClient _mqttClient;                   // MQTT client
         String _mqttServer;                         // MQTT server address
         uint16_t _mqttPort;                         // MQTT server port
         String _mqttUsername;                       // MQTT username
@@ -471,9 +471,9 @@ private:
         uint16_t _webPort;                          // Web server port
         bool _webServerEnabled;                     // Web server enabled flag
         #if defined(ESP32)
-            WebServer* _webServer;                  // ESP32 Web Server (pointer)
+            WebServer _webServer;                   // ESP32 Web Server
         #elif defined(ESP8266)
-            ESP8266WebServer* _webServer;           // ESP8266 Web Server (pointer)
+            ESP8266WebServer _webServer;            // ESP8266 Web Server
         #endif
     #endif
 
