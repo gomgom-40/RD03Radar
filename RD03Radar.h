@@ -6,6 +6,17 @@
 #include <vector>
 #include <functional>
 
+// Platform-specific includes for MQTT and Web Server
+#if defined(ESP32) || defined(ESP8266)
+    #include <WiFiClient.h>
+    #include <PubSubClient.h>
+    #if defined(ESP32)
+        #include <WebServer.h>
+    #elif defined(ESP8266)
+        #include <ESP8266WebServer.h>
+    #endif
+#endif
+
 // ============================================================================
 // RD03Radar Library for Arduino
 // Smart Presence Detection System for Ai-Thinker RD-03 24GHz mmWave Radar
@@ -574,15 +585,6 @@ private:
      */
     void watchdogCheck();
 
-    /**
-     * @brief Send radar reset commands
-     */
-    void sendResetCommands();
-
-    /**
-     * @brief Clear UART buffer
-     */
-    void clearUARTBuffer();
 
     /**
      * @brief Get status string for given status
