@@ -1,0 +1,130 @@
+name: Arduino Library CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        board:
+          - esp32:esp32:esp32
+          - esp8266:esp8266:generic
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Arduino CLI
+      uses: arduino/setup-arduino-cli@v1
+
+    - name: Install ESP32 core
+      if: matrix.board == 'esp32:esp32:esp32'
+      run: |
+        arduino-cli config init --additional-urls "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json"
+        arduino-cli core update-index
+        arduino-cli core install esp32:esp32
+
+    - name: Install ESP8266 core
+      if: matrix.board == 'esp8266:esp8266:generic'
+      run: |
+        arduino-cli config init --additional-urls "https://arduino.esp8266.com/stable/package_esp8266com_index.json"
+        arduino-cli core update-index
+        arduino-cli core install esp8266:esp8266
+
+    - name: Install PubSubClient library
+      run: arduino-cli lib install PubSubClient
+
+    - name: Install ArduinoJson library
+      run: arduino-cli lib install ArduinoJson
+
+    - name: Compile BasicPresenceDetection example
+      run: |
+        arduino-cli compile --fqbn ${{ matrix.board }} examples/BasicPresenceDetection/BasicPresenceDetection.ino
+
+    - name: Compile MQTT example (ESP32/ESP8266 only)
+      if: matrix.board != 'arduino:avr:mega'
+      run: |
+        arduino-cli compile --fqbn ${{ matrix.board }} examples/MQTT_Example/MQTT_Example.ino
+
+    - name: Compile WebServer example (ESP32/ESP8266 only)
+      if: matrix.board != 'arduino:avr:mega'
+      run: |
+        arduino-cli compile --fqbn ${{ matrix.board }} examples/WebServer_Example/WebServer_Example.ino
+
+    - name: Compile Full Features example (ESP32/ESP8266 only)
+      if: matrix.board != 'arduino:avr:mega'
+      run: |
+        arduino-cli compile --fqbn ${{ matrix.board }} examples/Full_Features_Example/Full_Features_Example.ino
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install Arduino Lint
+      run: npm install -g arduino-lint
+
+    - name: Run Arduino Lint
+      run: arduino-lint --library-manager update --compliance strict
+
+  documentation:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check README links
+      uses: gaurav-nelson/github-action-markdown-link-check@v1
+      with:
+        use-quiet-mode: 'yes'
+        use-verbose-mode: 'yes'
+        config-file: '.github/workflows/link-check-config.json'
+
+    - name: Validate library.properties
+      run: |
+        if [ ! -f "library.properties" ]; then
+          echo "library.properties not found!"
+          exit 1
+        fi
+
+        # Check required fields
+        grep -q "^name=" library.properties || (echo "name field missing" && exit 1)
+        grep -q "^version=" library.properties || (echo "version field missing" && exit 1)
+        grep -q "^author=" library.properties || (echo "author field missing" && exit 1)
+        grep -q "^maintainer=" library.properties || (echo "maintainer field missing" && exit 1)
+
+        echo "library.properties validation passed"
+
+  release-validation:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Validate release assets
+      run: |
+        # Check if release has ZIP asset
+        if ! curl -s "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -e '.assets[] | select(.name | endswith(".zip"))'; then
+          echo "No ZIP asset found in release!"
+          exit 1
+        fi
+
+        echo "Release validation passed"

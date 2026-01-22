@@ -3,6 +3,10 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)](https://github.com/gomgom-40/RD03Radar)
 [![Arduino Library](https://www.ardu-badge.com/badge/RD03Radar.svg)](https://www.ardu-badge.com/RD03Radar)
+[![Build Status](https://github.com/gomgom-40/RD03Radar/workflows/Arduino%20Library%20CI/badge.svg)](https://github.com/gomgom-40/RD03Radar/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Version](https://img.shields.io/badge/Version-1.1.0-blue.svg)](https://github.com/gomgom-40/RD03Radar)
+[![Arduino Library](https://www.ardu-badge.com/badge/RD03Radar.svg)](https://www.ardu-badge.com/RD03Radar)
 [![ESP32](https://img.shields.io/badge/ESP32-Supported-green.svg)](https://www.espressif.com/en/products/som/esp32)
 [![ESP8266](https://img.shields.io/badge/ESP8266-Supported-green.svg)](https://github.com/esp8266/Arduino)
 [![MQTT](https://img.shields.io/badge/MQTT-Supported-brightgreen.svg)](https://mqtt.org/)
@@ -42,6 +46,22 @@
 
 ---
 
+## 📸 Screenshots
+
+### Hardware Setup
+<div align="center">
+<img src="screenshots/hardware_setup.jpg" alt="RD03Radar Hardware Setup" width="600">
+<p><em>Complete hardware setup with ESP32, RD-03 radar sensor, and relay module</em></p>
+</div>
+
+### Web Interface Control Panel
+<div align="center">
+<img src="screenshots/web_interface.jpg" alt="RD03Radar Web Interface" width="600">
+<p><em>Built-in web control panel for real-time monitoring and configuration</em></p>
+</div>
+
+---
+
 ## ✨ Key Features
 
 | 🚀 **Smart Detection** | 🎛️ **Fully Configurable** | 🛡️ **Bulletproof Reliability** |
@@ -55,6 +75,34 @@
 | Automatic, Manual, Force modes | Callback-based architecture | Easy Arduino integration |
 | Light control integration | Event-driven programming | Comprehensive documentation |
 | Safety timeout protection | Multi-platform support | Open source & MIT licensed |
+
+---
+
+## 🔧 CI/CD Status
+
+### Automated Testing
+This library uses GitHub Actions for continuous integration and testing:
+
+- **Multi-platform compilation** for ESP32 and ESP8266
+- **Example validation** ensuring all sketches compile correctly
+- **Library linting** with Arduino standards compliance
+- **Documentation checks** including link validation
+- **Release validation** for automated deployment
+
+### Build Matrix
+| Platform | ESP32 | ESP8266 |
+|----------|-------|---------|
+| Basic Example | ✅ | ✅ |
+| MQTT Example | ✅ | ✅ |
+| Web Server Example | ✅ | ✅ |
+| Full Features Example | ✅ | ✅ |
+
+### Quality Assurance
+- **Code linting** with Arduino standards
+- **Link checking** for documentation integrity
+- **Release automation** for consistent deployments
+
+---
 
 ### 🎯 **Perfect For:**
 - 🏠 **Smart Home Automation** - Bathroom lights, security systems
@@ -615,6 +663,37 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📄 License
 
 This library is licensed under the MIT License - see the LICENSE file for details.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions from the community! Here's how you can help:
+
+### Ways to Contribute
+- **🐛 Bug Reports**: [Open an issue](https://github.com/gomgom-40/RD03Radar/issues/new?template=bug_report.md)
+- **💡 Feature Requests**: [Suggest new features](https://github.com/gomgom-40/RD03Radar/issues/new?template=feature_request.md)
+- **📝 Documentation**: Improve documentation, tutorials, or examples
+- **🧪 Testing**: Test on different hardware platforms
+- **💻 Code**: Submit pull requests with fixes or enhancements
+
+### Development Guidelines
+1. Follow Arduino coding standards
+2. Add comprehensive documentation
+3. Test on multiple platforms (ESP32/ESP8266)
+4. Update examples when adding features
+5. Maintain backward compatibility
+
+### Getting Started
+- Read our [Contributing Guide](CONTRIBUTING.md)
+- Check [Code of Conduct](CODE_OF_CONDUCT.md)
+- Review [Security Policy](SECURITY.md)
+
+### Code Style
+- Use C++11 features compatible with Arduino
+- Follow Arduino naming conventions
+- Add Doxygen-style comments for public APIs
+- Keep functions focused and well-documented
 
 ---
 
