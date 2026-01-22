@@ -6,609 +6,207 @@
 #include <vector>
 #include <functional>
 
-// Platform-specific includes for MQTT and Web Server
-// Only included when ESP32/ESP8266 is defined to avoid requiring them for basic examples
-#if defined(ESP32) || defined(ESP8266)
-    #include <WiFiClient.h>
-    #include <PubSubClient.h>
-    #if defined(ESP32)
-        #include <WebServer.h>
-    #elif defined(ESP8266)
-        #include <ESP8266WebServer.h>
-    #endif
-#endif
-
 // ============================================================================
 // RD03Radar Library for Arduino
 // Smart Presence Detection System for Ai-Thinker RD-03 24GHz mmWave Radar
 //
 // Author: Mohamed Eid (gomgom-40)
-// Version: 1.0.0
+// Version: 1.1.0
 // License: MIT
 // ============================================================================
 
 // ============================================================================
 // Configuration Structures
 // ============================================================================
-
-/**
- * @brief Configuration structure for radar settings
- */
 struct RD03Config {
-    // Detection range (cm)
-    float minRange = 20.0f;        // Minimum detection range
-    float maxRange = 500.0f;       // Maximum detection range
-
-    // Sensitivity settings
-    uint8_t sensitivity = 3;       // Sensitivity level (1-5)
-
-    // Timeouts (seconds)
-    uint16_t holdTime = 30;        // How long to keep light on after activity (seconds)
-    uint16_t maxAbsenceTime = 300; // Safety timeout (seconds)
-
-    // Motion detection
-    float motionThreshold = 2.0f;  // Minimum distance change to detect motion (cm)
-    uint8_t motionHitsRequired = 1; // Motion detection sensitivity
-
-    // UART settings
+    float minRange = 20.0f;
+    float maxRange = 500.0f;
+    uint8_t sensitivity = 3;
+    uint16_t holdTime = 30;
+    uint16_t maxAbsenceTime = 300;
+    float motionThreshold = 2.0f;
+    uint8_t motionHitsRequired = 1;
     uint32_t baudRate = 115200;
-    uint8_t rxBufferSize = 256;
+    uint8_t rxBufferSize = 255;  // غيرناه لـ 255 عشان نتجنب narrowing error
 };
 
 // ============================================================================
-// Status Enumeration
+// Status & State Enumerations
 // ============================================================================
-
-/**
- * @brief Radar operational status
- */
 enum class RD03Status {
-    OK,                    // Everything working normally
-    ERROR,                 // General error
-    NO_SIGNAL,            // No signal from radar
-    BUFFER_OVERFLOW,      // UART buffer overflow
-    INVALID_DATA,         // Invalid data received
-    WATCHDOG_RESET        // Watchdog initiated reset
+    OK, ERROR, NO_SIGNAL, BUFFER_OVERFLOW, INVALID_DATA, WATCHDOG_RESET
 };
 
-/**
- * @brief Presence detection state
- */
 enum class RD03PresenceState {
-    NO_PRESENCE,          // No presence detected
-    PRESENCE_DETECTED,    // Presence detected
-    MOTION_DETECTED,      // Motion detected (entry)
-    MAINTAINING,          // Maintaining presence
-    FAST_EXIT,            // Fast exit (no target)
-    SAFETY_TIMEOUT        // Safety timeout reached
+    NO_PRESENCE, PRESENCE_DETECTED, MOTION_DETECTED, MAINTAINING, FAST_EXIT, SAFETY_TIMEOUT
 };
 
-/**
- * @brief Control mode
- */
 enum class RD03ControlMode {
-    AUTOMATIC,            // Full automatic mode
-    MANUAL_ON,            // Manual override ON
-    FORCE_ON,             // Force ON override
-    FORCE_OFF             // Force OFF override
+    AUTOMATIC, MANUAL_ON, FORCE_ON, FORCE_OFF
 };
 
 // ============================================================================
-// Callback Function Types
+// Callback Types (always available)
 // ============================================================================
-
-/**
- * @brief Callback for presence state changes
- * @param state New presence state
- * @param distance Current distance reading (0 = no target)
- */
-using PresenceCallback = std::function<void(RD03PresenceState state, float distance)>;
-
-/**
- * @brief Callback for status changes
- * @param status New radar status
- * @param message Status message
- */
-using StatusCallback = std::function<void(RD03Status status, const char* message)>;
-
-/**
- * @brief Callback for distance measurements
- * @param distance Measured distance in cm (0 = no target)
- * @param valid True if measurement is valid
- */
-using DistanceCallback = std::function<void(float distance, bool valid)>;
-
-/**
- * @brief Callback for light control
- * @param turnOn True to turn light ON, false to turn OFF
- * @param reason Reason for the control action
- */
-using LightControlCallback = std::function<void(bool turnOn, const char* reason)>;
+using PresenceCallback = std::function<void(RD03PresenceState, float)>;
+using StatusCallback   = std::function<void(RD03Status, const char*)>;
+using DistanceCallback = std::function<void(float, bool)>;
+using LightControlCallback = std::function<void(bool, const char*)>;
 
 // ============================================================================
-// Main RD03Radar Class
+// Main Class
 // ============================================================================
-
 class RD03Radar {
 public:
-    // ============================================================================
-    // Constructor & Destructor
-    // ============================================================================
-
-    /**
-     * @brief Constructor for HardwareSerial (ESP32 Serial2, etc.)
-     * @param serial HardwareSerial interface for radar communication
-     * @param config Radar configuration (optional)
-     */
+    // Constructors
     RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
-
-    /**
-     * @brief Constructor for SoftwareSerial (ESP8266, etc.)
-     * @param serial SoftwareSerial interface for radar communication
-     * @param config Radar configuration (optional)
-     */
     RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
-
-    /**
-     * @brief Destructor
-     */
     ~RD03Radar();
 
-    // ============================================================================
-    // Initialization & Setup
-    // ============================================================================
-
-    /**
-     * @brief Initialize the radar sensor
-     * @param rxPin RX pin for UART
-     * @param txPin TX pin for UART
-     * @return true if initialization successful
-     */
-    bool begin(int rxPin, int txPin);
-
-    /**
-     * @brief Initialize with existing Serial object
-     * @return true if initialization successful
-     */
+    // Core methods (always available)
+    bool begin(int rxPin = -1, int txPin = -1);
     bool begin();
-
-    /**
-     * @brief Stop radar operation
-     */
     void end();
-
-    // ============================================================================
-    // Configuration Methods
-    // ============================================================================
-
-    /**
-     * @brief Update radar configuration
-     * @param config New configuration
-     */
-    void setConfig(const RD03Config& config);
-
-    /**
-     * @brief Get current configuration
-     * @return Current configuration
-     */
-    RD03Config getConfig() const;
-
-    /**
-     * @brief Set detection range
-     * @param minRange Minimum range in cm
-     * @param maxRange Maximum range in cm
-     */
-    void setRange(float minRange, float maxRange);
-
-    /**
-     * @brief Set sensitivity level
-     * @param sensitivity 1=Most sensitive, 5=Most relaxed
-     */
-    void setSensitivity(uint8_t sensitivity);
-
-    /**
-     * @brief Set hold time
-     * @param holdTimeSeconds Time to keep light on after activity (seconds)
-     */
-    void setHoldTime(uint16_t holdTimeSeconds);
-
-    // ============================================================================
-    // Control Methods
-    // ============================================================================
-
-    /**
-     * @brief Set control mode
-     * @param mode Control mode
-     */
-    void setControlMode(RD03ControlMode mode);
-
-    /**
-     * @brief Get current control mode
-     * @return Current control mode
-     */
-    RD03ControlMode getControlMode() const;
-
-    /**
-     * @brief Force manual light control
-     * @param turnOn True to turn ON, false to turn OFF
-     */
-    void manualLightControl(bool turnOn);
-
-    /**
-     * @brief Reset presence detection state
-     */
-    void resetPresence();
-
-    // ============================================================================
-    // Main Processing Method (Call in loop())
-    // ============================================================================
-
-    /**
-     * @brief Main processing function - call this in Arduino loop()
-     * Handles UART communication, presence detection, and light control
-     */
     void loop();
 
-    // ============================================================================
-    // Status & Information Methods
-    // ============================================================================
+    // Configuration
+    void setConfig(const RD03Config& config);
+    RD03Config getConfig() const;
+    void setRange(float minRange, float maxRange);
+    void setSensitivity(uint8_t sensitivity);
+    void setHoldTime(uint16_t holdTimeSeconds);
 
-    /**
-     * @brief Get current presence state
-     * @return Current presence state
-     */
+    // Control & State
+    void setControlMode(RD03ControlMode mode);
+    RD03ControlMode getControlMode() const;
+    void manualLightControl(bool turnOn);
+    void resetPresence();
+
+    // Status & Readings
     RD03PresenceState getPresenceState() const;
-
-    /**
-     * @brief Get presence state as string
-     * @return Presence state string
-     */
     String getPresenceStateString() const;
-
-    /**
-     * @brief Get current distance reading
-     * @return Distance in cm (0 = no target)
-     */
     float getDistance() const;
-
-    /**
-     * @brief Get radar status
-     * @return Current radar status
-     */
     RD03Status getStatus() const;
-
-    /**
-     * @brief Check if radar is operational
-     * @return true if radar is working
-     */
     bool isOperational() const;
-
-    /**
-     * @brief Get uptime in milliseconds
-     * @return Time since initialization
-     */
     uint32_t getUptime() const;
-
-    /**
-     * @brief Get last activity timestamp
-     * @return Milliseconds since last activity
-     */
     uint32_t getLastActivityTime() const;
 
-    // ============================================================================
-    // Callback Registration
-    // ============================================================================
+    // Callbacks (always available)
+    void onPresenceChange(PresenceCallback cb);
+    void onStatusChange(StatusCallback cb);
+    void onDistanceMeasurement(DistanceCallback cb);
+    void onLightControl(LightControlCallback cb);
 
-    /**
-     * @brief Register presence callback
-     * @param callback Function to call on presence state changes
-     */
-    void onPresenceChange(PresenceCallback callback);
-
-    /**
-     * @brief Register status callback
-     * @param callback Function to call on status changes
-     */
-    void onStatusChange(StatusCallback callback);
-
-    /**
-     * @brief Register distance callback
-     * @param callback Function to call on distance measurements
-     */
-    void onDistanceMeasurement(DistanceCallback callback);
-
-    /**
-     * @brief Register light control callback
-     * @param callback Function to call for light control actions
-     */
-    void onLightControl(LightControlCallback callback);
-
-    // ============================================================================
-    // Utility Methods
-    // ============================================================================
-
-    /**
-     * @brief Reset radar sensor (send reset commands)
-     */
+    // Utility
     void resetRadar();
-
-    /**
-     * @brief Get library version
-     * @return Version string
-     */
     static const char* getVersion();
-
-    /**
-     * @brief Get library information
-     * @return Info string
-     */
     static const char* getInfo();
 
-    // ============================================================================
-    // MQTT Support (ESP32/ESP8266 only)
-    // ============================================================================
+    // ──────────────────────────────────────────────
+    //          MQTT Support – Optional Feature
+    // ──────────────────────────────────────────────
+#if defined(RD03_ENABLE_MQTT)
 
-    /**
-     * @brief Setup MQTT connection
-     * @param server MQTT server address
-     * @param port MQTT server port (default 1883)
-     * @param username MQTT username (optional)
-     * @param password MQTT password (optional)
-     */
-    void setupMQTT(const char* server, uint16_t port = 1883, const char* username = nullptr, const char* password = nullptr);
-
-    /**
-     * @brief Connect to MQTT broker
-     */
+    void setupMQTT(const char* server, uint16_t port = 1883,
+                   const char* username = nullptr, const char* password = nullptr);
     void connectMQTT();
-
-    /**
-     * @brief Disconnect from MQTT broker
-     */
     void disconnectMQTT();
-
-    /**
-     * @brief Check if connected to MQTT broker
-     * @return true if connected
-     */
     bool isMQTTConnected();
-
-    /**
-     * @brief Publish current status to MQTT
-     */
     void publishStatus();
-
-    /**
-     * @brief Subscribe to MQTT commands
-     */
     void subscribeCommands();
+    void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> cb);
 
-    /**
-     * @brief Set MQTT message callback
-     * @param callback Callback function
-     */
-    void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> callback);
+private:
+    void handleMQTTMessage(char* topic, uint8_t* payload, unsigned int length);
 
-    // ============================================================================
-    // Web Server Support (ESP32/ESP8266 only)
-    // ============================================================================
+    WiFiClient _wifiClient;
+    PubSubClient _mqttClient;
+    String _mqttServer;
+    uint16_t _mqttPort;
+    String _mqttUsername;
+    String _mqttPassword;
+    bool _mqttEnabled = false;
+    std::function<void(char*, uint8_t*, unsigned int)> _mqttCallback;
 
-    /**
-     * @brief Setup web server
-     * @param port Web server port (default 80)
-     */
+#endif  // RD03_ENABLE_MQTT
+
+    // ──────────────────────────────────────────────
+    //       WebServer Support – Optional Feature
+    // ──────────────────────────────────────────────
+#if defined(RD03_ENABLE_WEBSERVER)
+
+public:
     void setupWebServer(uint16_t port = 80);
-
-    /**
-     * @brief Start web server
-     */
     void startWebServer();
-
-    /**
-     * @brief Stop web server
-     */
     void stopWebServer();
-
-    /**
-     * @brief Check if web server is running
-     * @return true if running
-     */
     bool isWebServerRunning() const;
 
 private:
-    // ============================================================================
-    // Private Helper Methods
-    // ============================================================================
-
-    /**
-     * @brief Get the appropriate serial interface
-     * @return Pointer to the serial interface
-     */
-    Stream* getSerial();
-
-    // ============================================================================
-    // Private Member Variables
-    // ============================================================================
-
-    HardwareSerial* _hardwareSerial;           // HardwareSerial interface (ESP32)
-    Stream* _softwareSerial;                     // SoftwareSerial interface (ESP8266)
-    bool _isHardwareSerial;                      // Flag to track which serial type
-    RD03Config _config;                         // Current configuration
-    RD03PresenceState _presenceState;           // Current presence state
-    RD03ControlMode _controlMode;               // Current control mode
-    RD03Status _status;                         // Current radar status
-
-    // Timestamps and counters
-    uint32_t _startTime;                        // Initialization timestamp
-    uint32_t _lastActivityTime;                 // Last activity timestamp
-    uint32_t _lastPublishTime;                  // Last data publish timestamp
-    uint32_t _radarLastSeenTime;                // Last radar message timestamp
-    uint32_t _watchdogActivityTime;             // Watchdog activity timestamp
-    uint32_t _noTargetSince;                    // No target detection timestamp
-
-    // Distance tracking
-    float _lastValidDistance;                   // Last valid distance reading
-    float _lastDistanceForMotion;               // Last distance for motion detection
-    uint8_t _motionHits;                        // Motion detection counter
-
-    // Control flags
-    bool _presenceActive;                       // Presence detection active flag
-    bool _manualOffRecent;                      // Manual turn-off flag
-    bool _initialized;                          // Initialization flag
-
-    // MQTT variables (only for ESP32/ESP8266)
-    #if defined(ESP32) || defined(ESP8266)
-        WiFiClient _wifiClient;                     // WiFi client for MQTT
-        PubSubClient _mqttClient;                   // MQTT client
-        String _mqttServer;                         // MQTT server address
-        uint16_t _mqttPort;                         // MQTT server port
-        String _mqttUsername;                       // MQTT username
-        String _mqttPassword;                       // MQTT password
-        bool _mqttEnabled;                          // MQTT enabled flag
-        std::function<void(char*, uint8_t*, unsigned int)> _mqttCallback; // MQTT message callback
-
-        // Web Server variables
-        uint16_t _webPort;                          // Web server port
-        bool _webServerEnabled;                     // Web server enabled flag
-        #if defined(ESP32)
-            WebServer _webServer;                   // ESP32 Web Server
-        #elif defined(ESP8266)
-            ESP8266WebServer _webServer;            // ESP8266 Web Server
-        #endif
-    #endif
-
-    // UART buffer
-    std::vector<uint8_t> _uartBuffer;           // UART receive buffer
-    uint32_t _lastByteTime;                     // Last byte received timestamp
-
-    // Callbacks
-    PresenceCallback _presenceCallback;         // Presence change callback
-    StatusCallback _statusCallback;             // Status change callback
-    DistanceCallback _distanceCallback;         // Distance measurement callback
-    LightControlCallback _lightCallback;        // Light control callback
-
-    // ============================================================================
-    // Private Methods
-    // ============================================================================
-
-    /**
-     * @brief Process UART data and extract messages
-     * @return Extracted message string or empty string
-     */
-    String processUART();
-
-    /**
-     * @brief Initialize radar sensor
-     * @return true if successful
-     */
-    bool initializeRadar();
-
-    /**
-     * @brief Send reset commands to radar
-     */
-    void sendResetCommands();
-
-    /**
-     * @brief Clear UART buffer
-     */
-    void clearUARTBuffer();
-
-    // ============================================================================
-    // Web Server Handlers (Private)
-    // ============================================================================
-
-    /**
-     * @brief Handle web root page
-     */
     void handleWebRoot();
-
-    /**
-     * @brief Handle API status request
-     */
     void handleAPIStatus();
-
-    /**
-     * @brief Handle API command request
-     */
     void handleAPICommand();
-
-    /**
-     * @brief Handle web server not found
-     */
     void handleWebNotFound();
 
-    /**
-     * @brief Handle MQTT message
-     * @param topic MQTT topic
-     * @param payload MQTT payload
-     * @param length Payload length
-     */
-    void handleMQTTMessage(char* topic, uint8_t* payload, unsigned int length);
+    uint16_t _webPort;
+    bool _webServerEnabled = false;
 
-    /**
-     * @brief Extract distance from radar message
-     * @param message Radar message
-     * @return Distance in cm or 0.0 if invalid
-     */
-    float extractDistance(const String& message);
+#if defined(ESP32)
+    WebServer _webServer;
+#elif defined(ESP8266)
+    ESP8266WebServer _webServer;
+#endif
 
-    /**
-     * @brief Validate distance reading
-     * @param distance Distance to validate
-     * @return true if distance is valid
-     */
-    bool isValidDistance(float distance);
+#endif  // RD03_ENABLE_WEBSERVER
 
-    /**
-     * @brief Handle entry detection logic
-     * @param distance Current distance reading
-     */
+private:
+    // Common private members
+    HardwareSerial* _hardwareSerial = nullptr;
+    Stream* _stream = nullptr;
+    bool _usingHardwareSerial = false;
+    RD03Config _config;
+    RD03PresenceState _presenceState = RD03PresenceState::NO_PRESENCE;
+    RD03ControlMode _controlMode = RD03ControlMode::AUTOMATIC;
+    RD03Status _status = RD03Status::OK;
+
+    uint32_t _startTime = 0;
+    uint32_t _lastActivityTime = 0;
+    uint32_t _lastPublishTime = 0;
+    uint32_t _radarLastSeenTime = 0;
+    uint32_t _watchdogActivityTime = 0;
+    uint32_t _noTargetSince = 0;
+
+    float _lastValidDistance = 0.0f;
+    float _lastDistanceForMotion = 0.0f;
+    uint8_t _motionHits = 0;
+
+    bool _presenceActive = false;
+    bool _manualOffRecent = false;
+    bool _initialized = false;
+
+    std::vector<uint8_t> _uartBuffer;
+    uint32_t _lastByteTime = 0;
+
+    PresenceCallback _presenceCallback;
+    StatusCallback   _statusCallback;
+    DistanceCallback _distanceCallback;
+    LightControlCallback _lightCallback;
+
+    // Private helpers
+    Stream* getSerial();
+    String processUART();
+    bool initializeRadar();
+    void sendResetCommands();
+    void clearUARTBuffer();
+
     void handleEntryDetection(float distance);
-
-    /**
-     * @brief Handle presence maintenance logic
-     * @param distance Current distance reading
-     */
     void handlePresenceMaintenance(float distance);
-
-    /**
-     * @brief Update presence state and trigger callbacks
-     * @param newState New presence state
-     * @param distance Current distance
-     */
     void updatePresenceState(RD03PresenceState newState, float distance = 0.0f);
-
-    /**
-     * @brief Update radar status and trigger callbacks
-     * @param newStatus New radar status
-     * @param message Status message
-     */
     void updateStatus(RD03Status newStatus, const char* message = "");
-
-    /**
-     * @brief Handle light control logic
-     */
     void handleLightControl();
-
-    /**
-     * @brief Watchdog monitoring and recovery
-     */
     void watchdogCheck();
 
-
-    /**
-     * @brief Get status string for given status
-     * @param status Status to convert
-     * @return Status string
-     */
-    const char* statusToString(RD03Status status) const;
-
-    /**
-     * @brief Get presence state string
-     * @param state State to convert
-     * @return State string
-     */
-    const char* presenceStateToString(RD03PresenceState state) const;
+    const char* statusToString(RD03Status s) const;
+    const char* presenceStateToString(RD03PresenceState s) const;
 };
 
 #endif // RD03RADAR_H

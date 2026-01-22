@@ -25,6 +25,10 @@
  * Author: Mohamed Eid (gomgom-40)
  * Version: 1.1.0
  */
+
+// Required for MQTT support in this example
+#define RD03_ENABLE_MQTT
+
 #if defined(ESP8266)
   #include <SoftwareSerial.h>
 #endif

@@ -31,6 +31,11 @@
  * Author: Mohamed Eid (gomgom-40)
  * Version: 1.1.0
  */
+
+// Required features for this full example
+#define RD03_ENABLE_MQTT
+#define RD03_ENABLE_WEBSERVER
+
 #if defined(ESP8266)
   #include <SoftwareSerial.h>
 #endif
