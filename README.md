@@ -19,14 +19,17 @@
 
 **RD03Radar** is a comprehensive Arduino library for the Ai-Thinker RD-03 24GHz mmWave radar sensor. Transform a cheap **$5 radar sensor** into an intelligent presence detection system with motion-based entry detection, automated lighting control, and advanced watchdog protection.
 
-**Perfect for DIY smart homes, security systems, and IoT automation projects!** 🏠🤖
+## 📸 Screenshots
 
-[![Demo Video](https://img.shields.io/badge/Demo-Video-red.svg)](https://youtube.com/@RD03Radar)
-[![Buy Sensor](https://img.shields.io/badge/Buy-RD--03-blue.svg)](https://www.aliexpress.com/item/Ai-Thinker-RD-03-24GHz-mmWave-Radar-Sensor/1005004567890123.html)
-
+### Hardware Setup
+<div align="center">
+<img src="screenshots/hardware_setup.jpg" alt="RD03Radar Hardware Setup" width="600">
+<img src="screenshots/web_interface.jpg" alt="RD03Radar Web Interface" width="600">
+<p><em>Complete hardware setup with ESP32, RD-03 radar sensor, and relay module</em></p>
 </div>
 
 ---
+
 
 ## 🔥 Why RD03Radar?
 
