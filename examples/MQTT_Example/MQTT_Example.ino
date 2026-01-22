@@ -25,12 +25,17 @@
  * Author: Mohamed Eid (gomgom-40)
  * Version: 1.1.0
  */
+
+// Required to enable MQTT support in RD03Radar library
+#define RD03_ENABLE_MQTT
+
 #if defined(ESP8266)
   #include <SoftwareSerial.h>
 #endif
+
 #include <RD03Radar.h>
 
-// Add WiFi include depending on platform
+// Platform-specific WiFi include
 #if defined(ESP32)
   #include <WiFi.h>
 #elif defined(ESP8266)
@@ -39,33 +44,31 @@
   #error "This example is intended for ESP32 or ESP8266 only"
 #endif
 
-// WiFi credentials
-const char* WIFI_SSID = "YOUR_WIFI_SSID";
+// WiFi credentials - CHANGE THESE!
+const char* WIFI_SSID     = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
-// MQTT broker settings
-const char* MQTT_SERVER = "192.168.1.100"; // Change to your MQTT broker IP
-const uint16_t MQTT_PORT = 1883;
-const char* MQTT_USERNAME = nullptr; // Set if authentication required
-const char* MQTT_PASSWORD = nullptr; // Set if authentication required
+// MQTT broker settings - CHANGE SERVER IP/HOSTNAME!
+const char* MQTT_SERVER   = "192.168.1.100";  // e.g., "broker.hivemq.com" or local IP
+const uint16_t MQTT_PORT  = 1883;
+const char* MQTT_USERNAME = nullptr;  // Set if your broker requires authentication
+const char* MQTT_PASSWORD = nullptr;
 
 // Radar configuration
 RD03Config radarConfig = {
-    .minRange = 20.0f,
-    .maxRange = 500.0f,
-    .sensitivity = 3,
-    .holdTime = 30,
-    .maxAbsenceTime = 300
+    .minRange         = 20.0f,
+    .maxRange         = 500.0f,
+    .sensitivity      = 3,
+    .holdTime         = 30,
+    .maxAbsenceTime   = 300
 };
 
-// Create radar instance - use different Serial for different platforms
+// Create radar instance - different Serial for platforms
 #if defined(ESP8266)
-  // ESP8266 uses SoftwareSerial to avoid conflict with Serial monitor
-  SoftwareSerial radarSerial(12, 14); // RX, TX pins
+  SoftwareSerial radarSerial(12, 14);  // RX=D6=12, TX=D5=14
   RD03Radar radar(radarSerial, radarConfig);
 #else
-  // ESP32 uses Serial2 (HardwareSerial)
-  RD03Radar radar(Serial2, radarConfig);
+  RD03Radar radar(Serial2, radarConfig);  // ESP32 Serial2 (GPIO16 RX, GPIO17 TX)
 #endif
 
 // LED for visual feedback (optional)
@@ -75,7 +78,8 @@ void setup() {
     Serial.begin(115200);
     pinMode(STATUS_LED, OUTPUT);
     digitalWrite(STATUS_LED, LOW);
-    Serial.println("RD03Radar MQTT Example");
+
+    Serial.println("\nRD03Radar MQTT Example");
     Serial.println("======================");
 
     // Connect to WiFi
@@ -84,29 +88,29 @@ void setup() {
     // Setup MQTT
     radar.setupMQTT(MQTT_SERVER, MQTT_PORT, MQTT_USERNAME, MQTT_PASSWORD);
 
-    // Setup presence callback
+    // Presence change callback
     radar.onPresenceChange([](RD03PresenceState state, float distance) {
         Serial.print("Presence: ");
         Serial.print(state == RD03PresenceState::PRESENCE_DETECTED ? "DETECTED" : "NONE");
         Serial.print(", Distance: ");
         Serial.print(distance);
         Serial.println(" cm");
-        // Visual feedback
+
         digitalWrite(STATUS_LED, state == RD03PresenceState::PRESENCE_DETECTED ? HIGH : LOW);
     });
 
-    // Setup status callback
+    // Status change callback
     radar.onStatusChange([](RD03Status status, const char* message) {
         Serial.print("Status: ");
         switch (status) {
-            case RD03Status::OK: Serial.println("OK"); break;
-            case RD03Status::ERROR: Serial.println("ERROR"); break;
-            case RD03Status::NO_SIGNAL: Serial.println("NO_SIGNAL"); break;
+            case RD03Status::OK:              Serial.println("OK");              break;
+            case RD03Status::ERROR:           Serial.println("ERROR");           break;
+            case RD03Status::NO_SIGNAL:       Serial.println("NO_SIGNAL");       break;
             case RD03Status::BUFFER_OVERFLOW: Serial.println("BUFFER_OVERFLOW"); break;
-            case RD03Status::INVALID_DATA: Serial.println("INVALID_DATA"); break;
-            case RD03Status::WATCHDOG_RESET: Serial.println("WATCHDOG_RESET"); break;
+            case RD03Status::INVALID_DATA:    Serial.println("INVALID_DATA");    break;
+            case RD03Status::WATCHDOG_RESET:  Serial.println("WATCHDOG_RESET");  break;
         }
-        if (strlen(message) > 0) {
+        if (message && strlen(message) > 0) {
             Serial.print("Message: ");
             Serial.println(message);
         }
@@ -114,18 +118,18 @@ void setup() {
 
     // Initialize radar
     Serial.println("Initializing radar...");
-    #if defined(ESP8266)
-      if (radar.begin()) { // ESP8266 uses SoftwareSerial (already initialized)
-    #else
-      if (radar.begin(16, 17)) { // ESP32 uses HardwareSerial with custom pins
-    #endif
+#if defined(ESP8266)
+    if (radar.begin()) {  // SoftwareSerial – no pins needed
+#else
+    if (radar.begin(16, 17)) {  // HardwareSerial – RX=16, TX=17
+#endif
         Serial.println("✅ Radar initialized successfully!");
         Serial.println("Waiting for MQTT connection and presence detection...");
     } else {
         Serial.println("❌ Failed to initialize radar!");
-        while (1) {
+        while (true) {
             delay(1000);
-            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED)); // Blink LED on error
+            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));  // Blink on error
         }
     }
 }
@@ -141,29 +145,31 @@ void loop() {
         Serial.println("Status published to MQTT");
     }
 
-    // Small delay to prevent overwhelming the serial output
-    delay(10);
+    delay(10);  // Prevent overwhelming serial output
 }
 
 void setupWiFi() {
     Serial.print("Connecting to WiFi: ");
     Serial.println(WIFI_SSID);
+
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
         delay(500);
         Serial.print(".");
         attempts++;
     }
+
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("\nWiFi connected!");
         Serial.print("IP address: ");
         Serial.println(WiFi.localIP().toString());
     } else {
         Serial.println("\nWiFi connection failed!");
-        while (1) {
+        while (true) {
             delay(1000);
-            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED)); // Blink LED on error
+            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));  // Blink on error
         }
     }
 }
