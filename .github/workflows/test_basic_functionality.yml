@@ -17,7 +17,6 @@ on:
 jobs:
   test-basic:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -44,34 +43,25 @@ jobs:
 
     - name: Test library installation
       run: |
-        # Test local library installation
         mkdir -p ~/Arduino/libraries/RD03Radar
         cp *.h *.cpp library.properties ~/Arduino/libraries/RD03Radar/
-
-        # Verify library structure
         [ -f ~/Arduino/libraries/RD03Radar/RD03Radar.h ] || exit 1
         [ -f ~/Arduino/libraries/RD03Radar/RD03Radar.cpp ] || exit 1
         echo "✅ Library structure verified"
 
     - name: Test header file compilation
       run: |
-        # Create minimal test sketch
         cat > /tmp/test_sketch.ino << 'EOF'
         #include <RD03Radar.h>
-
         RD03Config config;
         RD03Radar radar(Serial2, config);
-
         void setup() {
           radar.begin(16, 17);
         }
-
         void loop() {
           radar.loop();
         }
         EOF
-
-        # Test compilation
         arduino-cli compile --fqbn esp32:esp32:esp32 /tmp/test_sketch.ino
         arduino-cli compile --fqbn esp8266:esp8266:generic /tmp/test_sketch.ino
         echo "✅ Header compilation successful"
@@ -82,17 +72,23 @@ jobs:
         arduino-cli compile --fqbn esp8266:esp8266:generic examples/BasicPresenceDetection/BasicPresenceDetection.ino
         echo "✅ Basic example compilation successful"
 
+    - name: Compile MQTT Example with MQTT enabled
+      run: |
+        arduino-cli compile --fqbn esp8266:esp8266:generic \
+          --library . \
+          -D RD03_ENABLE_MQTT \
+          examples/MQTT_Example/MQTT_Example.ino
+        echo "✅ MQTT example compiled successfully with MQTT enabled"
+
     - name: Validate library metadata
       run: |
-        # Check library.properties
         grep -q "name=RD03Radar" library.properties || exit 1
         grep -q "version=1.1.0" library.properties || exit 1
-        grep -q "architectures=esp32,esp8266,avr" library.properties || exit 1
+        grep -q "architectures=esp32,esp8266" library.properties || exit 1
         echo "✅ Library metadata validated"
 
     - name: Check file permissions
       run: |
-        # Ensure source files are readable
         [ -r src/RD03Radar.h ] || exit 1
         [ -r src/RD03Radar.cpp ] || exit 1
         [ -r library.properties ] || exit 1
