@@ -2,87 +2,139 @@
 #define RD03RADAR_H
 
 #include <Arduino.h>
-#include <HardwareSerial.h>
 #include <vector>
 #include <functional>
 
-// ============================================================================
-// RD03Radar Library for Arduino
-// Smart Presence Detection System for Ai-Thinker RD-03 24GHz mmWave Radar
-//
-// Author: Mohamed Eid (gomgom-40)
-// Version: 1.1.0
-// License: MIT
-// ============================================================================
+// Platform-specific serial support
+#if defined(ESP32)
+  #include <HardwareSerial.h>
+#endif
+
+// ──────────────────────────────────────────────
+//  Optional Features – Enabled by examples only
+// ──────────────────────────────────────────────
+// Uncomment / define in the .ino file when needed
+// #define RD03_ENABLE_MQTT
+// #define RD03_ENABLE_WEBSERVER
+
+// ──────────────────────────────────────────────
+//  MQTT Support (optional – ESP32/ESP8266 only)
+// ──────────────────────────────────────────────
+#if defined(RD03_ENABLE_MQTT)
+  #if defined(ESP32) || defined(ESP8266)
+    #include <WiFiClient.h>
+    #include <PubSubClient.h>
+  #else
+    #error "MQTT is only supported on ESP32 or ESP8266 platforms"
+  #endif
+#endif
+
+// ──────────────────────────────────────────────
+//  WebServer Support (optional – ESP32/ESP8266 only)
+// ──────────────────────────────────────────────
+#if defined(RD03_ENABLE_WEBSERVER)
+  #if defined(ESP32)
+    #include <WebServer.h>
+  #elif defined(ESP8266)
+    #include <ESP8266WebServer.h>
+  #else
+    #error "WebServer is only supported on ESP32 or ESP8266 platforms"
+  #endif
+#endif
 
 // ============================================================================
-// Configuration Structures
+// Configuration Structure
 // ============================================================================
 struct RD03Config {
-    float minRange = 20.0f;
-    float maxRange = 500.0f;
-    uint8_t sensitivity = 3;
-    uint16_t holdTime = 30;
-    uint16_t maxAbsenceTime = 300;
-    float motionThreshold = 2.0f;
-    uint8_t motionHitsRequired = 1;
-    uint32_t baudRate = 115200;
-    uint8_t rxBufferSize = 255;  // غيرناه لـ 255 عشان نتجنب narrowing error
+    float minRange           = 20.0f;   // Minimum detection range (cm)
+    float maxRange           = 500.0f;  // Maximum detection range (cm)
+    uint8_t sensitivity      = 3;       // Sensitivity level (1–5)
+    uint16_t holdTime        = 30;      // Hold time after detection (seconds)
+    uint16_t maxAbsenceTime  = 300;     // Max absence timeout (seconds)
+    float motionThreshold    = 2.0f;    // Min distance change to detect motion (cm)
+    uint8_t motionHitsRequired = 1;     // Required consecutive hits for motion
+    uint32_t baudRate        = 115200;  // UART baud rate
+    uint8_t rxBufferSize     = 255;     // UART RX buffer size (max 255 for uint8_t)
 };
 
 // ============================================================================
 // Status & State Enumerations
 // ============================================================================
 enum class RD03Status {
-    OK, ERROR, NO_SIGNAL, BUFFER_OVERFLOW, INVALID_DATA, WATCHDOG_RESET
+    OK,
+    ERROR,
+    NO_SIGNAL,
+    BUFFER_OVERFLOW,
+    INVALID_DATA,
+    WATCHDOG_RESET
 };
 
 enum class RD03PresenceState {
-    NO_PRESENCE, PRESENCE_DETECTED, MOTION_DETECTED, MAINTAINING, FAST_EXIT, SAFETY_TIMEOUT
+    NO_PRESENCE,
+    PRESENCE_DETECTED,
+    MOTION_DETECTED,
+    MAINTAINING,
+    FAST_EXIT,
+    SAFETY_TIMEOUT
 };
 
 enum class RD03ControlMode {
-    AUTOMATIC, MANUAL_ON, FORCE_ON, FORCE_OFF
+    AUTOMATIC,
+    MANUAL_ON,
+    FORCE_ON,
+    FORCE_OFF
 };
 
 // ============================================================================
-// Callback Types (always available)
+// Callback Function Types
 // ============================================================================
-using PresenceCallback = std::function<void(RD03PresenceState, float)>;
-using StatusCallback   = std::function<void(RD03Status, const char*)>;
-using DistanceCallback = std::function<void(float, bool)>;
+using PresenceCallback     = std::function<void(RD03PresenceState, float)>;
+using StatusCallback       = std::function<void(RD03Status, const char*)>;
+using DistanceCallback     = std::function<void(float, bool)>;
 using LightControlCallback = std::function<void(bool, const char*)>;
 
 // ============================================================================
-// Main Class
+// Main RD03Radar Class
 // ============================================================================
 class RD03Radar {
 public:
+    // ──────────────────────────────────────────────
     // Constructors
+    // ──────────────────────────────────────────────
     RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
     RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
     ~RD03Radar();
 
-    // Core methods (always available)
-    bool begin(int rxPin = -1, int txPin = -1);
+    // ──────────────────────────────────────────────
+    // Initialization
+    // ──────────────────────────────────────────────
+    // For HardwareSerial (ESP32) – specify RX/TX pins
+    bool begin(int rxPin, int txPin);
+    // For SoftwareSerial (ESP8266) or pre-configured Stream – no pins needed
     bool begin();
     void end();
-    void loop();
 
+    // ──────────────────────────────────────────────
     // Configuration
+    // ──────────────────────────────────────────────
     void setConfig(const RD03Config& config);
     RD03Config getConfig() const;
     void setRange(float minRange, float maxRange);
     void setSensitivity(uint8_t sensitivity);
     void setHoldTime(uint16_t holdTimeSeconds);
 
-    // Control & State
+    // ──────────────────────────────────────────────
+    // Control & Mode
+    // ──────────────────────────────────────────────
     void setControlMode(RD03ControlMode mode);
     RD03ControlMode getControlMode() const;
     void manualLightControl(bool turnOn);
     void resetPresence();
 
-    // Status & Readings
+    // ──────────────────────────────────────────────
+    // Core Loop & Status
+    // ──────────────────────────────────────────────
+    void loop();
     RD03PresenceState getPresenceState() const;
     String getPresenceStateString() const;
     float getDistance() const;
@@ -91,22 +143,25 @@ public:
     uint32_t getUptime() const;
     uint32_t getLastActivityTime() const;
 
-    // Callbacks (always available)
-    void onPresenceChange(PresenceCallback cb);
-    void onStatusChange(StatusCallback cb);
-    void onDistanceMeasurement(DistanceCallback cb);
-    void onLightControl(LightControlCallback cb);
+    // ──────────────────────────────────────────────
+    // Callback Registration
+    // ──────────────────────────────────────────────
+    void onPresenceChange(PresenceCallback callback);
+    void onStatusChange(StatusCallback callback);
+    void onDistanceMeasurement(DistanceCallback callback);
+    void onLightControl(LightControlCallback callback);
 
-    // Utility
+    // ──────────────────────────────────────────────
+    // Utility Methods
+    // ──────────────────────────────────────────────
     void resetRadar();
     static const char* getVersion();
     static const char* getInfo();
 
     // ──────────────────────────────────────────────
-    //          MQTT Support – Optional Feature
+    // MQTT Support (optional feature)
     // ──────────────────────────────────────────────
 #if defined(RD03_ENABLE_MQTT)
-
     void setupMQTT(const char* server, uint16_t port = 1883,
                    const char* username = nullptr, const char* password = nullptr);
     void connectMQTT();
@@ -114,55 +169,27 @@ public:
     bool isMQTTConnected();
     void publishStatus();
     void subscribeCommands();
-    void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> cb);
-
-private:
-    void handleMQTTMessage(char* topic, uint8_t* payload, unsigned int length);
-
-    WiFiClient _wifiClient;
-    PubSubClient _mqttClient;
-    String _mqttServer;
-    uint16_t _mqttPort;
-    String _mqttUsername;
-    String _mqttPassword;
-    bool _mqttEnabled = false;
-    std::function<void(char*, uint8_t*, unsigned int)> _mqttCallback;
-
-#endif  // RD03_ENABLE_MQTT
+    void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> callback);
+#endif
 
     // ──────────────────────────────────────────────
-    //       WebServer Support – Optional Feature
+    // WebServer Support (optional feature)
     // ──────────────────────────────────────────────
 #if defined(RD03_ENABLE_WEBSERVER)
-
-public:
     void setupWebServer(uint16_t port = 80);
     void startWebServer();
     void stopWebServer();
     bool isWebServerRunning() const;
-
-private:
-    void handleWebRoot();
-    void handleAPIStatus();
-    void handleAPICommand();
-    void handleWebNotFound();
-
-    uint16_t _webPort;
-    bool _webServerEnabled = false;
-
-#if defined(ESP32)
-    WebServer _webServer;
-#elif defined(ESP8266)
-    ESP8266WebServer _webServer;
 #endif
 
-#endif  // RD03_ENABLE_WEBSERVER
-
 private:
-    // Common private members
+    // ──────────────────────────────────────────────
+    // Internal Members
+    // ──────────────────────────────────────────────
     HardwareSerial* _hardwareSerial = nullptr;
     Stream* _stream = nullptr;
-    bool _usingHardwareSerial = false;
+    bool _isHardwareSerial = false;
+
     RD03Config _config;
     RD03PresenceState _presenceState = RD03PresenceState::NO_PRESENCE;
     RD03ControlMode _controlMode = RD03ControlMode::AUTOMATIC;
@@ -187,11 +214,34 @@ private:
     uint32_t _lastByteTime = 0;
 
     PresenceCallback _presenceCallback;
-    StatusCallback   _statusCallback;
+    StatusCallback _statusCallback;
     DistanceCallback _distanceCallback;
     LightControlCallback _lightCallback;
 
-    // Private helpers
+#if defined(RD03_ENABLE_MQTT)
+    WiFiClient _wifiClient;
+    PubSubClient _mqttClient;
+    String _mqttServer;
+    uint16_t _mqttPort;
+    String _mqttUsername;
+    String _mqttPassword;
+    bool _mqttEnabled = false;
+    std::function<void(char*, uint8_t*, unsigned int)> _mqttCallback;
+#endif
+
+#if defined(RD03_ENABLE_WEBSERVER)
+    uint16_t _webPort = 80;
+    bool _webServerEnabled = false;
+#if defined(ESP32)
+    WebServer _webServer;
+#elif defined(ESP8266)
+    ESP8266WebServer _webServer;
+#endif
+#endif
+
+    // ──────────────────────────────────────────────
+    // Private Helper Methods
+    // ──────────────────────────────────────────────
     Stream* getSerial();
     String processUART();
     bool initializeRadar();
@@ -205,8 +255,19 @@ private:
     void handleLightControl();
     void watchdogCheck();
 
-    const char* statusToString(RD03Status s) const;
-    const char* presenceStateToString(RD03PresenceState s) const;
+    const char* statusToString(RD03Status status) const;
+    const char* presenceStateToString(RD03PresenceState state) const;
+
+#if defined(RD03_ENABLE_MQTT)
+    void handleMQTTMessage(char* topic, uint8_t* payload, unsigned int length);
+#endif
+
+#if defined(RD03_ENABLE_WEBSERVER)
+    void handleWebRoot();
+    void handleAPIStatus();
+    void handleAPICommand();
+    void handleWebNotFound();
+#endif
 };
 
 #endif // RD03RADAR_H
