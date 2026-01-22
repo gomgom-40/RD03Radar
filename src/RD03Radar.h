@@ -326,7 +326,88 @@ public:
      */
     static const char* getInfo();
 
+    // ============================================================================
+    // MQTT Support (ESP32/ESP8266 only)
+    // ============================================================================
+
+    /**
+     * @brief Setup MQTT connection
+     * @param server MQTT server address
+     * @param port MQTT server port (default 1883)
+     * @param username MQTT username (optional)
+     * @param password MQTT password (optional)
+     */
+    void setupMQTT(const char* server, uint16_t port = 1883, const char* username = nullptr, const char* password = nullptr);
+
+    /**
+     * @brief Connect to MQTT broker
+     */
+    void connectMQTT();
+
+    /**
+     * @brief Disconnect from MQTT broker
+     */
+    void disconnectMQTT();
+
+    /**
+     * @brief Check if connected to MQTT broker
+     * @return true if connected
+     */
+    bool isMQTTConnected() const;
+
+    /**
+     * @brief Publish current status to MQTT
+     */
+    void publishStatus();
+
+    /**
+     * @brief Subscribe to MQTT commands
+     */
+    void subscribeCommands();
+
+    /**
+     * @brief Set MQTT message callback
+     * @param callback Callback function
+     */
+    void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> callback);
+
+    // ============================================================================
+    // Web Server Support (ESP32/ESP8266 only)
+    // ============================================================================
+
+    /**
+     * @brief Setup web server
+     * @param port Web server port (default 80)
+     */
+    void setupWebServer(uint16_t port = 80);
+
+    /**
+     * @brief Start web server
+     */
+    void startWebServer();
+
+    /**
+     * @brief Stop web server
+     */
+    void stopWebServer();
+
+    /**
+     * @brief Check if web server is running
+     * @return true if running
+     */
+    bool isWebServerRunning() const;
+
 private:
+    // ============================================================================
+    // Private Helper Methods
+    // ============================================================================
+
+    /**
+     * @brief Get the appropriate serial interface
+     * @return Pointer to the serial interface
+     */
+    Stream* getSerial();
+
     // ============================================================================
     // Private Member Variables
     // ============================================================================
@@ -357,6 +438,24 @@ private:
     bool _manualOffRecent;                      // Manual turn-off flag
     bool _initialized;                          // Initialization flag
 
+    // MQTT variables
+    WiFiClient _wifiClient;                     // WiFi client for MQTT
+    PubSubClient _mqttClient;                   // MQTT client
+    String _mqttServer;                         // MQTT server address
+    uint16_t _mqttPort;                         // MQTT server port
+    String _mqttUsername;                       // MQTT username
+    String _mqttPassword;                       // MQTT password
+    bool _mqttEnabled;                          // MQTT enabled flag
+
+    // Web Server variables
+    uint16_t _webPort;                          // Web server port
+    bool _webServerEnabled;                     // Web server enabled flag
+    #if defined(ESP32)
+        WebServer _webServer;                   // ESP32 Web Server
+    #elif defined(ESP8266)
+        ESP8266WebServer _webServer;            // ESP8266 Web Server
+    #endif
+
     // UART buffer
     std::vector<uint8_t> _uartBuffer;           // UART receive buffer
     uint32_t _lastByteTime;                     // Last byte received timestamp
@@ -376,6 +475,54 @@ private:
      * @return Extracted message string or empty string
      */
     String processUART();
+
+    /**
+     * @brief Initialize radar sensor
+     * @return true if successful
+     */
+    bool initializeRadar();
+
+    /**
+     * @brief Send reset commands to radar
+     */
+    void sendResetCommands();
+
+    /**
+     * @brief Clear UART buffer
+     */
+    void clearUARTBuffer();
+
+    // ============================================================================
+    // Web Server Handlers (Private)
+    // ============================================================================
+
+    /**
+     * @brief Handle web root page
+     */
+    void handleWebRoot();
+
+    /**
+     * @brief Handle API status request
+     */
+    void handleAPIStatus();
+
+    /**
+     * @brief Handle API command request
+     */
+    void handleAPICommand();
+
+    /**
+     * @brief Handle web server not found
+     */
+    void handleWebNotFound();
+
+    /**
+     * @brief Handle MQTT message
+     * @param topic MQTT topic
+     * @param payload MQTT payload
+     * @param length Payload length
+     */
+    void handleMQTTMessage(char* topic, uint8_t* payload, unsigned int length);
 
     /**
      * @brief Extract distance from radar message

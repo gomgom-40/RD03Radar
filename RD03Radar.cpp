@@ -120,7 +120,7 @@ bool RD03Radar::begin(int rxPin, int txPin) {
 
     // Initialize serial with hardware pins
     if (_isHardwareSerial) {
-        _hardwareSerial->begin(_config.baudRate, SERIAL_8N1, rxPin, txPin);
+        _hardwareSerial->begin(_config.baudRate, SERIAL_8N1, (SerialMode)txPin, rxPin);
     } else {
         // SoftwareSerial is already initialized by user
         // We can't call begin() on SoftwareSerial here
