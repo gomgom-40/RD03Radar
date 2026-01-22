@@ -568,16 +568,16 @@ const char* RD03Radar::presenceStateToString(RD03PresenceState state) const {
 
 #if defined(RD03_ENABLE_MQTT)
 
-// Placeholder for publishStatus
 void RD03Radar::publishStatus() {
     if (!_mqttEnabled) return;
-    // MQTT message logic can be added here later
 }
 
-// Placeholder for setupMQTT
-void RD03Radar::setupMQTT(const char* server, const char* user, const char* pass) {
-    _mqttEnabled = true;
-    // MQTT client configuration can be added here
+void RD03Radar::setupMQTT(const char* server, uint16_t port, const char* username, const char* password) {
+    _mqttServer   = server;
+    _mqttPort     = port;
+    _mqttUsername = username ? username : "";
+    _mqttPassword = password ? password : "";
+    _mqttEnabled  = true;
 }
 
 #endif
