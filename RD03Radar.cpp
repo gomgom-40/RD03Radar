@@ -31,7 +31,7 @@ const uint8_t RADAR_INIT_CMD2[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x02, 0x00, 0x00, 0x0
 // Constructor & Destructor
 // ============================================================================
 
-RD03Radar::RD03Radar(HardwareSerial& serial, const RD03Config& config)
+RD03Radar::RD03Radar(Stream& serial, const RD03Config& config)
     : _serial(serial)
     , _config(config)
     , _presenceState(RD03PresenceState::NO_PRESENCE)

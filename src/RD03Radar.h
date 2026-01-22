@@ -125,10 +125,10 @@ public:
 
     /**
      * @brief Constructor
-     * @param serial UART interface for radar communication
+     * @param serial UART interface for radar communication (HardwareSerial, SoftwareSerial, etc.)
      * @param config Radar configuration (optional)
      */
-    RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
+    RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
 
     /**
      * @brief Destructor
@@ -324,7 +324,7 @@ private:
     // Private Member Variables
     // ============================================================================
 
-    HardwareSerial& _serial;                    // UART interface
+    Stream& _serial;                             // UART interface
     RD03Config _config;                         // Current configuration
     RD03PresenceState _presenceState;           // Current presence state
     RD03ControlMode _controlMode;               // Current control mode
