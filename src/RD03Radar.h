@@ -6,6 +6,11 @@
 #include <functional>
 
 // ──────────────────────────────────────────────
+// IMPORTANT: For MQTT examples to compile without linker errors on ESP8266
+// Uncomment the line below during development/testing of MQTT examples
+#define RD03_ENABLE_MQTT  // <--- Uncomment this line to force-enable MQTT
+
+// ──────────────────────────────────────────────
 // Platform-specific includes
 // ──────────────────────────────────────────────
 #if defined(ESP32)
@@ -15,12 +20,7 @@
 // ──────────────────────────────────────────────
 // Optional Features
 // ──────────────────────────────────────────────
-// To enable MQTT or WebServer, define ONE or BOTH in the .ino file BEFORE #include <RD03Radar.h>
-// Example in .ino:
-// #define RD03_ENABLE_MQTT
-// #define RD03_ENABLE_WEBSERVER
-// #include <RD03Radar.h>
-
+// MQTT (enable by defining RD03_ENABLE_MQTT in this file or .ino)
 #if defined(RD03_ENABLE_MQTT)
   #if defined(ESP32) || defined(ESP8266)
     #include <WiFiClient.h>
@@ -30,6 +30,7 @@
   #endif
 #endif
 
+// WebServer (enable by defining RD03_ENABLE_WEBSERVER in this file or .ino)
 #if defined(RD03_ENABLE_WEBSERVER)
   #if defined(ESP32)
     #include <WebServer.h>
@@ -96,14 +97,13 @@ using LightControlCallback = std::function<void(bool, const char*)>;
 // ============================================================================
 class RD03Radar {
 public:
-    // Constructors
     RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
     RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
     ~RD03Radar();
 
-    // Initialization – two overloads
-    bool begin();                           // For SoftwareSerial / pre-configured Stream (ESP8266)
-    bool begin(int rxPin, int txPin);       // For HardwareSerial (ESP32) – specify pins
+    // Initialization
+    bool begin();                           // For SoftwareSerial / Stream (ESP8266)
+    bool begin(int rxPin, int txPin);       // For HardwareSerial (ESP32)
     void end();
 
     // Configuration
@@ -122,7 +122,7 @@ public:
     // Core
     void loop();
 
-    // Readings
+    // Status & Readings
     RD03PresenceState getPresenceState() const;
     String getPresenceStateString() const;
     float getDistance() const;
@@ -142,7 +142,7 @@ public:
     static const char* getVersion();
     static const char* getInfo();
 
-    // Optional: MQTT Support
+    // MQTT Support (enabled if RD03_ENABLE_MQTT defined)
 #if defined(RD03_ENABLE_MQTT)
     void setupMQTT(const char* server, uint16_t port = 1883,
                    const char* username = nullptr, const char* password = nullptr);
@@ -154,7 +154,7 @@ public:
     void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> cb);
 #endif
 
-    // Optional: WebServer Support
+    // WebServer Support (enabled if RD03_ENABLE_WEBSERVER defined)
 #if defined(RD03_ENABLE_WEBSERVER)
     void setupWebServer(uint16_t port = 80);
     void startWebServer();
