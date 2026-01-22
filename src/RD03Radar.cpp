@@ -565,3 +565,19 @@ const char* RD03Radar::presenceStateToString(RD03PresenceState state) const {
         default: return "UNKNOWN";
     }
 }
+
+#if defined(RD03_ENABLE_MQTT)
+
+// Placeholder for publishStatus
+void RD03Radar::publishStatus() {
+    if (!_mqttEnabled) return;
+    // MQTT message logic can be added here later
+}
+
+// Placeholder for setupMQTT
+void RD03Radar::setupMQTT(const char* server, const char* user, const char* pass) {
+    _mqttEnabled = true;
+    // MQTT client configuration can be added here
+}
+
+#endif
