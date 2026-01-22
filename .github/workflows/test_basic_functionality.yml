@@ -46,8 +46,7 @@ jobs:
       run: |
         # Test local library installation
         mkdir -p ~/Arduino/libraries/RD03Radar
-        cp -r src/* ~/Arduino/libraries/RD03Radar/
-        cp library.properties ~/Arduino/libraries/RD03Radar/
+        cp *.h *.cpp library.properties ~/Arduino/libraries/RD03Radar/
 
         # Verify library structure
         [ -f ~/Arduino/libraries/RD03Radar/RD03Radar.h ] || exit 1

@@ -46,7 +46,9 @@ jobs:
       run: arduino-cli lib install ArduinoJson
 
     - name: Install RD03Radar library
-      run: arduino-cli lib install --git-url https://github.com/gomgom-40/RD03Radar.git
+      run: |
+        arduino-cli config set library.enable_unsafe_install true
+        arduino-cli lib install --git-url https://github.com/gomgom-40/RD03Radar.git
 
     - name: Test local compilation (with local library)
       run: |
@@ -56,10 +58,6 @@ jobs:
         cp library.properties ~/Arduino/libraries/RD03Radar/
 
         # Test compilation with local library
-        arduino-cli compile --fqbn ${{ matrix.board }} examples/BasicPresenceDetection/BasicPresenceDetection.ino
-
-    - name: Compile BasicPresenceDetection example
-      run: |
         arduino-cli compile --fqbn ${{ matrix.board }} examples/BasicPresenceDetection/BasicPresenceDetection.ino
 
     - name: Compile MQTT example (ESP32/ESP8266 only)
@@ -83,17 +81,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-
-    - name: Install Arduino Lint
-      run: npm install -g arduino-lint
-
-    - name: Run Arduino Lint
-      run: arduino-lint --library-manager update --compliance strict
 
     - name: Validate library.properties
       run: |

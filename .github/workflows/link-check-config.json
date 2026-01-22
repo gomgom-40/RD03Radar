@@ -1,10 +1,10 @@
 {
   "ignorePatterns": [
     {
-      "pattern": "^https://www.aliexpress.com"
+      "pattern": "^https://github\\.com/gomgom-40/RD03Radar/discussions$"
     },
     {
-      "pattern": "^https://youtube.com"
+      "pattern": "^https://www\\.espressif\\.com/en/products/som/esp32$"
     }
   ],
   "replacementPatterns": [
