@@ -11,12 +11,12 @@
  * - MQTT Broker (local or cloud)
  *
  * Wiring:
- * ESP32/ESP8266  RD-03 Radar
- * -----------------  -----------
- * GPIO17/D5      ── TX
- * GPIO16/D6      ── RX
- * GND            ── GND
- * 5V             ── VCC
+ * ESP32/ESP8266 RD-03 Radar
+ * ----------------- -----------
+ * GPIO17/D5 ── TX
+ * GPIO16/D6 ── RX
+ * GND ── GND
+ * 5V ── VCC
  *
  * MQTT Topics:
  * - rd03radar/status (published) - JSON status updates
@@ -25,22 +25,29 @@
  * Author: Mohamed Eid (gomgom-40)
  * Version: 1.1.0
  */
-
 #if defined(ESP8266)
   #include <SoftwareSerial.h>
 #endif
-
 #include <RD03Radar.h>
+
+// Add WiFi include depending on platform
+#if defined(ESP32)
+  #include <WiFi.h>
+#elif defined(ESP8266)
+  #include <ESP8266WiFi.h>
+#else
+  #error "This example is intended for ESP32 or ESP8266 only"
+#endif
 
 // WiFi credentials
 const char* WIFI_SSID = "YOUR_WIFI_SSID";
 const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
 
 // MQTT broker settings
-const char* MQTT_SERVER = "192.168.1.100";  // Change to your MQTT broker IP
+const char* MQTT_SERVER = "192.168.1.100"; // Change to your MQTT broker IP
 const uint16_t MQTT_PORT = 1883;
-const char* MQTT_USERNAME = nullptr;        // Set if authentication required
-const char* MQTT_PASSWORD = nullptr;        // Set if authentication required
+const char* MQTT_USERNAME = nullptr; // Set if authentication required
+const char* MQTT_PASSWORD = nullptr; // Set if authentication required
 
 // Radar configuration
 RD03Config radarConfig = {
@@ -54,7 +61,7 @@ RD03Config radarConfig = {
 // Create radar instance - use different Serial for different platforms
 #if defined(ESP8266)
   // ESP8266 uses SoftwareSerial to avoid conflict with Serial monitor
-  SoftwareSerial radarSerial(12, 14);  // RX, TX pins
+  SoftwareSerial radarSerial(12, 14); // RX, TX pins
   RD03Radar radar(radarSerial, radarConfig);
 #else
   // ESP32 uses Serial2 (HardwareSerial)
@@ -68,7 +75,6 @@ void setup() {
     Serial.begin(115200);
     pinMode(STATUS_LED, OUTPUT);
     digitalWrite(STATUS_LED, LOW);
-
     Serial.println("RD03Radar MQTT Example");
     Serial.println("======================");
 
@@ -85,7 +91,6 @@ void setup() {
         Serial.print(", Distance: ");
         Serial.print(distance);
         Serial.println(" cm");
-
         // Visual feedback
         digitalWrite(STATUS_LED, state == RD03PresenceState::PRESENCE_DETECTED ? HIGH : LOW);
     });
@@ -110,9 +115,9 @@ void setup() {
     // Initialize radar
     Serial.println("Initializing radar...");
     #if defined(ESP8266)
-      if (radar.begin()) {  // ESP8266 uses SoftwareSerial (already initialized)
+      if (radar.begin()) { // ESP8266 uses SoftwareSerial (already initialized)
     #else
-      if (radar.begin(16, 17)) {  // ESP32 uses HardwareSerial with custom pins
+      if (radar.begin(16, 17)) { // ESP32 uses HardwareSerial with custom pins
     #endif
         Serial.println("✅ Radar initialized successfully!");
         Serial.println("Waiting for MQTT connection and presence detection...");
@@ -143,16 +148,13 @@ void loop() {
 void setupWiFi() {
     Serial.print("Connecting to WiFi: ");
     Serial.println(WIFI_SSID);
-
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
     int attempts = 0;
     while (WiFi.status() != WL_CONNECTED && attempts < 20) {
         delay(500);
         Serial.print(".");
         attempts++;
     }
-
     if (WiFi.status() == WL_CONNECTED) {
         Serial.println("\nWiFi connected!");
         Serial.print("IP address: ");
