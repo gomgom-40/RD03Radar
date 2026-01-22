@@ -1,5 +1,3 @@
-#define RD03_ENABLE_MQTT  // <--- library build
-
 /**
  * RD03Radar Implementation
  * Smart Presence Detection System for Ai-Thinker RD-03 24GHz mmWave Radar
