@@ -26,6 +26,10 @@
  * Version: 1.1.0
  */
 
+#if defined(ESP8266)
+  #include <SoftwareSerial.h>
+#endif
+
 #include <RD03Radar.h>
 
 // WiFi credentials
@@ -44,7 +48,15 @@ RD03Config radarConfig = {
     .maxAbsenceTime = 300
 };
 
-RD03Radar radar(Serial2, radarConfig);
+// Create radar instance - use different Serial for different platforms
+#if defined(ESP8266)
+  // ESP8266 uses SoftwareSerial to avoid conflict with Serial monitor
+  SoftwareSerial radarSerial(12, 14);  // RX, TX pins
+  RD03Radar radar(radarSerial, radarConfig);
+#else
+  // ESP32 uses Serial2 (HardwareSerial)
+  RD03Radar radar(Serial2, radarConfig);
+#endif
 
 // LED for visual feedback (optional)
 const int STATUS_LED = 2;
@@ -74,22 +86,37 @@ void setup() {
     });
 
     // Setup status callback
-    radar.onStatusChange([](RD03Status status) {
-        Serial.printf("Status: %s\n",
-                     status == RD03Status::OK ? "OK" :
-                     status == RD03Status::ERROR ? "ERROR" :
-                     status == RD03Status::NO_SIGNAL ? "NO_SIGNAL" :
-                     status == RD03Status::BUFFER_OVERFLOW ? "BUFFER_OVERFLOW" :
-                     status == RD03Status::INVALID_DATA ? "INVALID_DATA" :
-                     "WATCHDOG_RESET");
+    radar.onStatusChange([](RD03Status status, const char* message) {
+        Serial.print("Status: ");
+        switch (status) {
+            case RD03Status::OK: Serial.println("OK"); break;
+            case RD03Status::ERROR: Serial.println("ERROR"); break;
+            case RD03Status::NO_SIGNAL: Serial.println("NO_SIGNAL"); break;
+            case RD03Status::BUFFER_OVERFLOW: Serial.println("BUFFER_OVERFLOW"); break;
+            case RD03Status::INVALID_DATA: Serial.println("INVALID_DATA"); break;
+            case RD03Status::WATCHDOG_RESET: Serial.println("WATCHDOG_RESET"); break;
+        }
+        if (strlen(message) > 0) {
+            Serial.print("Message: ");
+            Serial.println(message);
+        }
     });
 
     // Initialize radar
-    if (radar.begin(16, 17)) {  // ESP32 pins (TX=17, RX=16)
-        Serial.println("Radar initialized successfully");
+    Serial.println("Initializing radar...");
+    #if defined(ESP8266)
+      if (radar.begin()) {  // ESP8266 uses SoftwareSerial (already initialized)
+    #else
+      if (radar.begin(16, 17)) {  // ESP32 uses HardwareSerial with custom pins
+    #endif
+        Serial.println("✅ Radar initialized successfully!");
+        Serial.println("Starting web server...");
     } else {
-        Serial.println("Failed to initialize radar!");
-        while (1) delay(1000);
+        Serial.println("❌ Failed to initialize radar!");
+        while (1) {
+            delay(1000);
+            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED)); // Blink LED on error
+        }
     }
 
     // Start web server

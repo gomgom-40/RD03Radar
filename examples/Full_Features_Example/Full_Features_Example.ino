@@ -32,6 +32,10 @@
  * Version: 1.1.0
  */
 
+#if defined(ESP8266)
+  #include <SoftwareSerial.h>
+#endif
+
 #include <RD03Radar.h>
 
 // WiFi credentials
@@ -60,7 +64,15 @@ RD03Config radarConfig = {
     .rxBufferSize = 256          // UART buffer size
 };
 
-RD03Radar radar(Serial2, radarConfig);
+// Create radar instance - use different Serial for different platforms
+#if defined(ESP8266)
+  // ESP8266 uses SoftwareSerial to avoid conflict with Serial monitor
+  SoftwareSerial radarSerial(12, 14);  // RX, TX pins
+  RD03Radar radar(radarSerial, radarConfig);
+#else
+  // ESP32 uses Serial2 (HardwareSerial)
+  RD03Radar radar(Serial2, radarConfig);
+#endif
 
 // Status LED for visual feedback
 const int STATUS_LED = 2;
@@ -97,20 +109,29 @@ void setup() {
 
     // Initialize radar
     Serial.println("Initializing radar...");
-    if (radar.begin(16, 17)) {  // ESP32 pins (TX=17, RX=16)
-        Serial.println("✅ Radar initialized successfully");
+    #if defined(ESP8266)
+      if (radar.begin()) {  // ESP8266 uses SoftwareSerial (already initialized)
+    #else
+      if (radar.begin(16, 17)) {  // ESP32 uses HardwareSerial with custom pins
+    #endif
+        Serial.println("✅ Radar initialized successfully!");
+        Serial.println("Starting services...");
     } else {
         Serial.println("❌ Failed to initialize radar!");
         while (1) {
-            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED));
-            delay(500);
+            delay(1000);
+            digitalWrite(STATUS_LED, !digitalRead(STATUS_LED)); // Blink LED on error
         }
     }
 
     // Start services
     if (useWebServer) {
         radar.startWebServer();
-        Serial.printf("🌐 Web server started at: http://%s:%d/\n",
+        Serial.print("🌐 Web server started at: http://");
+        Serial.print(WiFi.localIP().toString());
+        Serial.print(":");
+        Serial.print(WEB_PORT);
+        Serial.println("/");
                       WiFi.localIP().toString().c_str(), WEB_PORT);
     }
 
@@ -143,7 +164,11 @@ void setupCallbacks() {
     // Presence change callback
     radar.onPresenceChange([](RD03PresenceState state, float distance) {
         const char* stateStr = getPresenceStateString(state);
-        Serial.printf("👤 Presence: %s (%.1f cm)\n", stateStr, distance);
+        Serial.print("👤 Presence: ");
+        Serial.print(stateStr);
+        Serial.print(" (");
+        Serial.print(distance);
+        Serial.println(" cm)");
 
         // Visual feedback
         digitalWrite(STATUS_LED, state == RD03PresenceState::PRESENCE_DETECTED ? HIGH : LOW);
@@ -155,9 +180,20 @@ void setupCallbacks() {
     });
 
     // Status change callback
-    radar.onStatusChange([](RD03Status status) {
-        const char* statusStr = getStatusString(status);
-        Serial.printf("📊 Status: %s\n", statusStr);
+    radar.onStatusChange([](RD03Status status, const char* message) {
+        Serial.print("📊 Status: ");
+        switch (status) {
+            case RD03Status::OK: Serial.println("OK"); break;
+            case RD03Status::ERROR: Serial.println("ERROR"); break;
+            case RD03Status::NO_SIGNAL: Serial.println("NO_SIGNAL"); break;
+            case RD03Status::BUFFER_OVERFLOW: Serial.println("BUFFER_OVERFLOW"); break;
+            case RD03Status::INVALID_DATA: Serial.println("INVALID_DATA"); break;
+            case RD03Status::WATCHDOG_RESET: Serial.println("WATCHDOG_RESET"); break;
+        }
+        if (strlen(message) > 0) {
+            Serial.print("Message: ");
+            Serial.println(message);
+        }
 
         // Flash LED on error
         if (status != RD03Status::OK) {
