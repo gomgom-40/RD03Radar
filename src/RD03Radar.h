@@ -6,11 +6,6 @@
 #include <functional>
 
 // ──────────────────────────────────────────────
-// IMPORTANT: For MQTT examples to compile without linker errors on ESP8266
-// Uncomment the line below during development/testing of MQTT examples
-#define RD03_ENABLE_MQTT  // <--- Uncomment this line to force-enable MQTT
-
-// ──────────────────────────────────────────────
 // Platform-specific includes
 // ──────────────────────────────────────────────
 #if defined(ESP32)
@@ -20,7 +15,12 @@
 // ──────────────────────────────────────────────
 // Optional Features
 // ──────────────────────────────────────────────
-// MQTT (enable by defining RD03_ENABLE_MQTT in this file or .ino)
+// Enable these ONLY in the .ino file that needs them (BEFORE #include <RD03Radar.h>)
+// Example:
+// #define RD03_ENABLE_MQTT
+// #define RD03_ENABLE_WEBSERVER
+// #include <RD03Radar.h>
+
 #if defined(RD03_ENABLE_MQTT)
   #if defined(ESP32) || defined(ESP8266)
     #include <WiFiClient.h>
@@ -30,7 +30,6 @@
   #endif
 #endif
 
-// WebServer (enable by defining RD03_ENABLE_WEBSERVER in this file or .ino)
 #if defined(RD03_ENABLE_WEBSERVER)
   #if defined(ESP32)
     #include <WebServer.h>
@@ -101,28 +100,23 @@ public:
     RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
     ~RD03Radar();
 
-    // Initialization
-    bool begin();                           // For SoftwareSerial / Stream (ESP8266)
-    bool begin(int rxPin, int txPin);       // For HardwareSerial (ESP32)
+    bool begin();                           // For SoftwareSerial / Stream
+    bool begin(int rxPin, int txPin);       // For HardwareSerial
     void end();
 
-    // Configuration
     void setConfig(const RD03Config& config);
     RD03Config getConfig() const;
     void setRange(float minRange, float maxRange);
     void setSensitivity(uint8_t sensitivity);
     void setHoldTime(uint16_t holdTimeSeconds);
 
-    // Control & State
     void setControlMode(RD03ControlMode mode);
     RD03ControlMode getControlMode() const;
     void manualLightControl(bool turnOn);
     void resetPresence();
 
-    // Core
     void loop();
 
-    // Status & Readings
     RD03PresenceState getPresenceState() const;
     String getPresenceStateString() const;
     float getDistance() const;
@@ -131,18 +125,16 @@ public:
     uint32_t getUptime() const;
     uint32_t getLastActivityTime() const;
 
-    // Callbacks
     void onPresenceChange(PresenceCallback cb);
     void onStatusChange(StatusCallback cb);
     void onDistanceMeasurement(DistanceCallback cb);
     void onLightControl(LightControlCallback cb);
 
-    // Utility
     void resetRadar();
     static const char* getVersion();
     static const char* getInfo();
 
-    // MQTT Support (enabled if RD03_ENABLE_MQTT defined)
+    // MQTT Support (only compiled if RD03_ENABLE_MQTT defined in .ino)
 #if defined(RD03_ENABLE_MQTT)
     void setupMQTT(const char* server, uint16_t port = 1883,
                    const char* username = nullptr, const char* password = nullptr);
@@ -154,7 +146,7 @@ public:
     void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> cb);
 #endif
 
-    // WebServer Support (enabled if RD03_ENABLE_WEBSERVER defined)
+    // WebServer Support (only compiled if RD03_ENABLE_WEBSERVER defined in .ino)
 #if defined(RD03_ENABLE_WEBSERVER)
     void setupWebServer(uint16_t port = 80);
     void startWebServer();
@@ -217,7 +209,6 @@ private:
 #endif
 #endif
 
-    // Private helpers
     Stream* getSerial() { return _stream; }
 
     String processUART();
