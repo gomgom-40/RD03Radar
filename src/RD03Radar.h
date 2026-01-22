@@ -5,21 +5,9 @@
 #include <vector>
 #include <functional>
 
-// ──────────────────────────────────────────────
-// Platform-specific includes
-// ──────────────────────────────────────────────
 #if defined(ESP32)
   #include <HardwareSerial.h>
 #endif
-
-// ──────────────────────────────────────────────
-// Optional Features
-// ──────────────────────────────────────────────
-// Enable these ONLY in the .ino file that needs them (BEFORE #include <RD03Radar.h>)
-// Example:
-// #define RD03_ENABLE_MQTT
-// #define RD03_ENABLE_WEBSERVER
-// #include <RD03Radar.h>
 
 #if defined(RD03_ENABLE_MQTT)
   #if defined(ESP32) || defined(ESP8266)
@@ -40,24 +28,18 @@
   #endif
 #endif
 
-// ============================================================================
-// Configuration Structure
-// ============================================================================
 struct RD03Config {
-    float    minRange           = 20.0f;   // cm
-    float    maxRange           = 500.0f;  // cm
-    uint8_t  sensitivity        = 3;       // 1 (high) to 5 (low)
-    uint16_t holdTime           = 30;      // seconds
-    uint16_t maxAbsenceTime     = 300;     // seconds
-    float    motionThreshold    = 2.0f;    // cm
-    uint8_t  motionHitsRequired = 1;       // consecutive detections
+    float    minRange           = 20.0f;
+    float    maxRange           = 500.0f;
+    uint8_t  sensitivity        = 3;
+    uint16_t holdTime           = 30;
+    uint16_t maxAbsenceTime     = 300;
+    float    motionThreshold    = 2.0f;
+    uint8_t  motionHitsRequired = 1;
     uint32_t baudRate           = 115200;
-    uint8_t  rxBufferSize       = 255;     // max safe value for uint8_t
+    uint8_t  rxBufferSize       = 255;
 };
 
-// ============================================================================
-// Enums
-// ============================================================================
 enum class RD03Status {
     OK,
     ERROR,
@@ -83,25 +65,19 @@ enum class RD03ControlMode {
     FORCE_OFF
 };
 
-// ============================================================================
-// Callback Types
-// ============================================================================
 using PresenceCallback     = std::function<void(RD03PresenceState, float)>;
 using StatusCallback       = std::function<void(RD03Status, const char*)>;
 using DistanceCallback     = std::function<void(float, bool)>;
 using LightControlCallback = std::function<void(bool, const char*)>;
 
-// ============================================================================
-// Main RD03Radar Class
-// ============================================================================
 class RD03Radar {
 public:
     RD03Radar(HardwareSerial& serial, const RD03Config& config = RD03Config());
     RD03Radar(Stream& serial, const RD03Config& config = RD03Config());
     ~RD03Radar();
 
-    bool begin();                           // For SoftwareSerial / Stream
-    bool begin(int rxPin, int txPin);       // For HardwareSerial
+    bool begin();
+    bool begin(int rxPin, int txPin);
     void end();
 
     void setConfig(const RD03Config& config);
@@ -134,19 +110,14 @@ public:
     static const char* getVersion();
     static const char* getInfo();
 
-    // MQTT Support (only compiled if RD03_ENABLE_MQTT defined in .ino)
-#if defined(RD03_ENABLE_MQTT)
-    void setupMQTT(const char* server, uint16_t port = 1883,
-                   const char* username = nullptr, const char* password = nullptr);
-    void connectMQTT();
-    void disconnectMQTT();
-    bool isMQTTConnected();
-    void publishStatus();
-    void subscribeCommands();
-    void setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> cb);
-#endif
+    // MQTT API always exists (prevents linker error)
+    void setupMQTT(const char* server,
+                   uint16_t port = 1883,
+                   const char* username = nullptr,
+                   const char* password = nullptr);
 
-    // WebServer Support (only compiled if RD03_ENABLE_WEBSERVER defined in .ino)
+    void publishStatus();
+
 #if defined(RD03_ENABLE_WEBSERVER)
     void setupWebServer(uint16_t port = 80);
     void startWebServer();
@@ -196,7 +167,6 @@ private:
     String _mqttUsername;
     String _mqttPassword;
     bool _mqttEnabled = false;
-    std::function<void(char*, uint8_t*, unsigned int)> _mqttCallback;
 #endif
 
 #if defined(RD03_ENABLE_WEBSERVER)
@@ -229,17 +199,6 @@ private:
 
     const char* statusToString(RD03Status status) const;
     const char* presenceStateToString(RD03PresenceState state) const;
-
-#if defined(RD03_ENABLE_MQTT)
-    void handleMQTTMessage(char* topic, uint8_t* payload, unsigned int length);
-#endif
-
-#if defined(RD03_ENABLE_WEBSERVER)
-    void handleWebRoot();
-    void handleAPIStatus();
-    void handleAPICommand();
-    void handleWebNotFound();
-#endif
 };
 
-#endif // RD03RADAR_H
+#endif
