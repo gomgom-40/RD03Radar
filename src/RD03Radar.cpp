@@ -80,7 +80,7 @@ bool RD03Radar::begin(int rxPin, int txPin) {
     if (_initialized) return true;
     if (!_isHardwareSerial) return false;
 
-    // ESP32 HardwareSerial begin (compatible with core API)
+    // ESP32 HardwareSerial - pins are RX/TX, no SerialMode needed for 8N1
     _hardwareSerial->begin(_config.baudRate, SERIAL_8N1, rxPin, txPin);
     delay(RADAR_INIT_DELAY_MS);
 
@@ -98,7 +98,7 @@ bool RD03Radar::begin() {
     if (_initialized) return true;
     if (_isHardwareSerial) return false;
 
-    // ESP8266 SoftwareSerial is pre-initialized by user
+    // ESP8266 SoftwareSerial already initialized by user
     delay(RADAR_INIT_DELAY_MS);
 
     if (initializeRadar()) {
@@ -231,13 +231,13 @@ RD03PresenceState RD03Radar::getPresenceState() const {
 
 String RD03Radar::getPresenceStateString() const {
     switch (_presenceState) {
-        case RD03PresenceState::NO_PRESENCE:     return "No Presence";
+        case RD03PresenceState::NO_PRESENCE: return "No Presence";
         case RD03PresenceState::PRESENCE_DETECTED: return "Presence Detected";
-        case RD03PresenceState::MOTION_DETECTED:  return "Motion Detected";
-        case RD03PresenceState::MAINTAINING:      return "Maintaining";
-        case RD03PresenceState::FAST_EXIT:        return "Fast Exit";
-        case RD03PresenceState::SAFETY_TIMEOUT:   return "Safety Timeout";
-        default:                                  return "Unknown";
+        case RD03PresenceState::MOTION_DETECTED: return "Motion Detected";
+        case RD03PresenceState::MAINTAINING: return "Maintaining";
+        case RD03PresenceState::FAST_EXIT: return "Fast Exit";
+        case RD03PresenceState::SAFETY_TIMEOUT: return "Safety Timeout";
+        default: return "Unknown";
     }
 }
 
@@ -323,7 +323,7 @@ String RD03Radar::processUART() {
     }
 
     if (newLineFound && !_uartBuffer.empty()) {
-        // Safe String construction (ESP8266 compatible)
+        // Safe String construction (compatible with ESP8266 core)
         String line;
         line.reserve(_uartBuffer.size());
         for (size_t i = 0; i < _uartBuffer.size(); ++i) {
@@ -516,7 +516,7 @@ void RD03Radar::watchdogCheck() {
 
     if (silentMs >= LONG_SILENCE_RESET_MS) {
         updateStatus(RD03Status::WATCHDOG_RESET, "Long silence detected - hard reset recommended");
-        // User can add ESP.restart() in main sketch if desired
+        // User can add ESP.restart() in main sketch if needed
     }
 }
 
