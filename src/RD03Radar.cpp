@@ -7,8 +7,6 @@
  * License: MIT
  */
  
-#define RD03_ENABLE_MQTT
- 
 #include "RD03Radar.h"
 
 // ──────────────────────────────────────────────

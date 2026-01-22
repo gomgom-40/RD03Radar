@@ -29,6 +29,8 @@
 // REQUIRED: Enable MQTT support in RD03Radar library
 #define RD03_ENABLE_MQTT
 
+#include <PubSubClient.h>
+
 #if defined(ESP8266)
   #include <SoftwareSerial.h>
 #endif
