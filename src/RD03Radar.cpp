@@ -1,5 +1,15 @@
 #include "RD03Radar.h"
 
+// Platform-specific includes for MQTT and Web Server implementation
+#if defined(ESP32) || defined(ESP8266)
+    #include <PubSubClient.h>
+    #if defined(ESP32)
+        #include <WebServer.h>
+    #elif defined(ESP8266)
+        #include <ESP8266WebServer.h>
+    #endif
+#endif
+
 // ============================================================================
 // RD03Radar Implementation
 // Smart Presence Detection System for Ai-Thinker RD-03 24GHz mmWave Radar
@@ -60,16 +70,29 @@ RD03Radar::RD03Radar(HardwareSerial& serial, const RD03Config& config)
     , _presenceActive(false)
     , _manualOffRecent(false)
     #if defined(ESP32) || defined(ESP8266)
-    , _mqttClient(_wifiClient)
+    , _mqttClient(nullptr)
     , _mqttEnabled(false)
-    , _webServer(_webPort)
+    , _webServer(nullptr)
     , _webServerEnabled(false)
+    , _webPort(80)
     #endif
     , _initialized(false)
     , _lastByteTime(0)
 {
     // Initialize UART buffer
     _uartBuffer.reserve(MAX_BUFFER_SIZE);
+    
+    #if defined(ESP32) || defined(ESP8266)
+        // Initialize MQTT client
+        _mqttClient = new PubSubClient(_wifiClient);
+        
+        // Initialize web server
+        #if defined(ESP32)
+            _webServer = new WebServer(_webPort);
+        #elif defined(ESP8266)
+            _webServer = new ESP8266WebServer(_webPort);
+        #endif
+    #endif
 }
 
 // SoftwareSerial constructor (ESP8266)
@@ -93,20 +116,47 @@ RD03Radar::RD03Radar(Stream& serial, const RD03Config& config)
     , _presenceActive(false)
     , _manualOffRecent(false)
     #if defined(ESP32) || defined(ESP8266)
-    , _mqttClient(_wifiClient)
+    , _mqttClient(nullptr)
     , _mqttEnabled(false)
-    , _webServer(_webPort)
+    , _webServer(nullptr)
     , _webServerEnabled(false)
+    , _webPort(80)
     #endif
     , _initialized(false)
     , _lastByteTime(0)
 {
     // Initialize UART buffer
     _uartBuffer.reserve(MAX_BUFFER_SIZE);
+    
+    #if defined(ESP32) || defined(ESP8266)
+        // Initialize MQTT client
+        _mqttClient = new PubSubClient(_wifiClient);
+        
+        // Initialize web server
+        #if defined(ESP32)
+            _webServer = new WebServer(_webPort);
+        #elif defined(ESP8266)
+            _webServer = new ESP8266WebServer(_webPort);
+        #endif
+    #endif
 }
 
 RD03Radar::~RD03Radar() {
     end();
+    
+    #if defined(ESP32) || defined(ESP8266)
+        // Clean up MQTT client
+        if (_mqttClient) {
+            delete _mqttClient;
+            _mqttClient = nullptr;
+        }
+        
+        // Clean up web server
+        if (_webServer) {
+            delete _webServer;
+            _webServer = nullptr;
+        }
+    #endif
 }
 
 // ============================================================================
@@ -347,8 +397,8 @@ void RD03Radar::setupMQTT(const char* server, uint16_t port, const char* usernam
     _mqttPassword = password ? password : "";
     _mqttEnabled = true;
 
-    _mqttClient.setServer(server, port);
-    _mqttClient.setCallback([this](char* topic, uint8_t* payload, unsigned int length) {
+    _mqttClient->setServer(server, port);
+    _mqttClient->setCallback([this](char* topic, uint8_t* payload, unsigned int length) {
         this->handleMQTTMessage(topic, payload, length);
     });
 }
@@ -361,9 +411,9 @@ void RD03Radar::connectMQTT() {
 
     bool connected = false;
     if (_mqttUsername.length() > 0) {
-        connected = _mqttClient.connect(clientId.c_str(), _mqttUsername.c_str(), _mqttPassword.c_str());
+        connected = _mqttClient->connect(clientId.c_str(), _mqttUsername.c_str(), _mqttPassword.c_str());
     } else {
-        connected = _mqttClient.connect(clientId.c_str());
+        connected = _mqttClient->connect(clientId.c_str());
     }
 
     if (connected) {
@@ -376,18 +426,18 @@ void RD03Radar::connectMQTT() {
 }
 
 void RD03Radar::disconnectMQTT() {
-    if (_mqttClient.connected()) {
-        _mqttClient.disconnect();
+    if (_mqttClient && _mqttClient->connected()) {
+        _mqttClient->disconnect();
         Serial.println("MQTT: Disconnected from MQTT broker");
     }
 }
 
 bool RD03Radar::isMQTTConnected() {
-    return _mqttClient.connected();
+    return _mqttClient ? _mqttClient->connected() : false;
 }
 
 void RD03Radar::publishStatus() {
-    if (!_mqttClient.connected()) return;
+    if (!_mqttClient || !_mqttClient->connected()) return;
 
     String jsonMessage = "{";
     jsonMessage += "\"presence\":" + String(_presenceActive ? "true" : "false") + ",";
@@ -397,18 +447,20 @@ void RD03Radar::publishStatus() {
     jsonMessage += "\"operational\":" + String(isOperational() ? "true" : "false");
     jsonMessage += "}";
 
-    _mqttClient.publish("rd03radar/status", jsonMessage.c_str());
+    _mqttClient->publish("rd03radar/status", jsonMessage.c_str());
 }
 
 void RD03Radar::subscribeCommands() {
-    if (_mqttClient.connected()) {
-        _mqttClient.subscribe("rd03radar/commands");
+    if (_mqttClient && _mqttClient->connected()) {
+        _mqttClient->subscribe("rd03radar/commands");
     }
 }
 
 void RD03Radar::setMQTTCallback(std::function<void(char*, uint8_t*, unsigned int)> callback) {
     _mqttCallback = callback;
-    _mqttClient.setCallback(callback);
+    if (_mqttClient) {
+        _mqttClient->setCallback(callback);
+    }
 }
 
 void RD03Radar::handleMQTTMessage(char* topic, uint8_t* payload, unsigned int length) {
@@ -442,15 +494,19 @@ void RD03Radar::setupWebServer(uint16_t port) {
     _webPort = port;
     _webServerEnabled = true;
 
-    _webServer.on("/", HTTP_GET, [this]() { handleWebRoot(); });
-    _webServer.on("/api/status", HTTP_GET, [this]() { handleAPIStatus(); });
-    _webServer.on("/api/command", HTTP_POST, [this]() { handleAPICommand(); });
-    _webServer.onNotFound([this]() { handleWebNotFound(); });
+    if (_webServer) {
+        _webServer->on("/", HTTP_GET, [this]() { handleWebRoot(); });
+        _webServer->on("/api/status", HTTP_GET, [this]() { handleAPIStatus(); });
+        _webServer->on("/api/command", HTTP_POST, [this]() { handleAPICommand(); });
+        _webServer->onNotFound([this]() { handleWebNotFound(); });
+    }
 }
 
 void RD03Radar::startWebServer() {
     if (_webServerEnabled) {
-        _webServer.begin();
+        if (_webServer) {
+            _webServer->begin();
+        }
         Serial.print("WebServer: Started on port ");
         Serial.println(_webPort);
     }
@@ -458,7 +514,9 @@ void RD03Radar::startWebServer() {
 
 void RD03Radar::stopWebServer() {
     if (_webServerEnabled) {
-        _webServer.stop();
+        if (_webServer) {
+            _webServer->stop();
+        }
         Serial.println("WebServer: Stopped");
     }
 }
@@ -488,7 +546,9 @@ void RD03Radar::handleWebRoot() {
     html += "<script>function sendCommand(cmd){fetch('/api/command',{method:'POST',body:cmd});location.reload();}</script>";
     html += "</body></html>";
 
-    _webServer.send(200, "text/html", html);
+    if (_webServer) {
+        _webServer->send(200, "text/html", html);
+    }
 }
 
 void RD03Radar::handleAPIStatus() {
@@ -500,12 +560,14 @@ void RD03Radar::handleAPIStatus() {
     json += "\"operational\":" + String(isOperational() ? "true" : "false");
     json += "}";
 
-    _webServer.send(200, "application/json", json);
+    if (_webServer) {
+        _webServer->send(200, "application/json", json);
+    }
 }
 
 void RD03Radar::handleAPICommand() {
-    if (_webServer.hasArg("plain")) {
-        String command = _webServer.arg("plain");
+    if (_webServer && _webServer->hasArg("plain")) {
+        String command = _webServer->arg("plain");
         Serial.print("WebAPI: Received command: ");
         Serial.println(command);
 
@@ -519,14 +581,20 @@ void RD03Radar::handleAPICommand() {
             resetPresence();
         }
 
-        _webServer.send(200, "text/plain", "OK");
+        if (_webServer) {
+            _webServer->send(200, "text/plain", "OK");
+        }
     } else {
-        _webServer.send(400, "text/plain", "Bad Request");
+        if (_webServer) {
+            _webServer->send(400, "text/plain", "Bad Request");
+        }
     }
 }
 
 void RD03Radar::handleWebNotFound() {
-    _webServer.send(404, "text/plain", "Not Found");
+    if (_webServer) {
+        _webServer->send(404, "text/plain", "Not Found");
+    }
 }
 
 #endif // ESP32 || ESP8266

@@ -6,14 +6,15 @@
 #include <vector>
 #include <functional>
 
-// Platform-specific includes for MQTT and Web Server
+// Platform-specific forward declarations for MQTT and Web Server
 #if defined(ESP32) || defined(ESP8266)
     #include <WiFiClient.h>
-    #include <PubSubClient.h>
+    // Forward declaration for PubSubClient to avoid requiring it for basic examples
+    class PubSubClient;
     #if defined(ESP32)
-        #include <WebServer.h>
+        class WebServer;
     #elif defined(ESP8266)
-        #include <ESP8266WebServer.h>
+        class ESP8266WebServer;
     #endif
 #endif
 
@@ -455,23 +456,25 @@ private:
     bool _manualOffRecent;                      // Manual turn-off flag
     bool _initialized;                          // Initialization flag
 
-    // MQTT variables
-    WiFiClient _wifiClient;                     // WiFi client for MQTT
-    PubSubClient _mqttClient;                   // MQTT client
-    String _mqttServer;                         // MQTT server address
-    uint16_t _mqttPort;                         // MQTT server port
-    String _mqttUsername;                       // MQTT username
-    String _mqttPassword;                       // MQTT password
-    bool _mqttEnabled;                          // MQTT enabled flag
-    std::function<void(char*, uint8_t*, unsigned int)> _mqttCallback; // MQTT message callback
+    // MQTT variables (only for ESP32/ESP8266)
+    #if defined(ESP32) || defined(ESP8266)
+        WiFiClient _wifiClient;                     // WiFi client for MQTT
+        PubSubClient* _mqttClient;                  // MQTT client (pointer to avoid requiring include)
+        String _mqttServer;                         // MQTT server address
+        uint16_t _mqttPort;                         // MQTT server port
+        String _mqttUsername;                       // MQTT username
+        String _mqttPassword;                       // MQTT password
+        bool _mqttEnabled;                          // MQTT enabled flag
+        std::function<void(char*, uint8_t*, unsigned int)> _mqttCallback; // MQTT message callback
 
-    // Web Server variables
-    uint16_t _webPort;                          // Web server port
-    bool _webServerEnabled;                     // Web server enabled flag
-    #if defined(ESP32)
-        WebServer _webServer;                   // ESP32 Web Server
-    #elif defined(ESP8266)
-        ESP8266WebServer _webServer;            // ESP8266 Web Server
+        // Web Server variables
+        uint16_t _webPort;                          // Web server port
+        bool _webServerEnabled;                     // Web server enabled flag
+        #if defined(ESP32)
+            WebServer* _webServer;                  // ESP32 Web Server (pointer)
+        #elif defined(ESP8266)
+            ESP8266WebServer* _webServer;           // ESP8266 Web Server (pointer)
+        #endif
     #endif
 
     // UART buffer

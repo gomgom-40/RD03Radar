@@ -132,7 +132,6 @@ void setup() {
         Serial.print(":");
         Serial.print(WEB_PORT);
         Serial.println("/");
-                      WiFi.localIP().toString().c_str(), WEB_PORT);
     }
 
     Serial.println("🚀 System ready!");
@@ -207,12 +206,16 @@ void setupCallbacks() {
     });
 
     // Distance measurement callback (optional - for debugging)
-    radar.onDistanceMeasurement([](float distance) {
-        // Only print if distance changed significantly
-        static float lastPrinted = 0;
-        if (abs(distance - lastPrinted) >= 10.0f) {
-            Serial.printf("📏 Distance: %.1f cm\n", distance);
-            lastPrinted = distance;
+    radar.onDistanceMeasurement([](float distance, bool valid) {
+        // Only print if distance changed significantly and is valid
+        if (valid) {
+            static float lastPrinted = 0;
+            if (abs(distance - lastPrinted) >= 10.0f) {
+                Serial.print("📏 Distance: ");
+                Serial.print(distance);
+                Serial.println(" cm");
+                lastPrinted = distance;
+            }
         }
     });
 
