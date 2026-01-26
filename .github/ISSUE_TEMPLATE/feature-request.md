@@ -1,50 +1,49 @@
 ---
 name: Feature Request
-about: Suggest a new feature or enhancement
+about: Suggest an idea for this project
 title: "[FEATURE] "
 labels: enhancement
-assignees: ''
+assignees: gomgom-40
 
 ---
 
-## 💡 Feature Request
+## Feature Summary
+A clear and concise description of the feature you'd like to see.
 
-### **Feature Summary**
-A brief description of the feature you'd like to see.
+## Problem Statement
+What's the problem this feature would solve? Is there a current limitation or pain point?
 
-### **Problem/Use Case**
-What problem does this feature solve? What use case would it enable?
+## Proposed Solution
+Describe your proposed solution in detail. Include:
+- How it would work
+- API changes required
+- Backward compatibility considerations
 
-### **Proposed Solution**
-Describe your proposed solution:
-- How would this feature work?
-- What would the API look like?
-- Any breaking changes?
+## Alternative Solutions
+Have you considered any alternative approaches? If so, describe them.
 
-### **Alternative Solutions**
-Have you considered any alternative approaches?
+## Use Cases
+Describe specific use cases where this feature would be helpful:
+1. Use case 1
+2. Use case 2
+3. Use case 3
 
-### **Additional Context**
-- Mock code examples
-- Screenshots of similar features in other libraries
-- Links to related projects or research
-- Performance requirements
-- Compatibility considerations
+## Implementation Ideas
+If you have technical suggestions:
+- Code structure changes
+- New dependencies
+- Platform considerations (ESP32 vs ESP8266)
 
-### **Implementation Notes**
-Technical details for implementation:
-- Hardware requirements
-- Memory constraints
-- Backward compatibility
-- Testing requirements
+## Additional Context
+Add any other context or screenshots about the feature request here.
 
-### **Priority**
-How important is this feature to you?
-- [ ] Nice to have
-- [ ] Would be helpful
-- [ ] Important for my project
-- [ ] Critical/blocking my work
+## Would you be willing to contribute?
+- [ ] Yes, I'd like to implement this feature
+- [ ] No, I'm just suggesting it
+- [ ] Maybe, depending on complexity
 
----
-
-**Thank you for your feature suggestion!** 🚀
+## Priority Level
+- [ ] Low (nice to have)
+- [ ] Medium (would be helpful)
+- [ ] High (important for my use case)
+- [ ] Critical (blocking my usage)
