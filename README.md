@@ -9,7 +9,6 @@
 [![Web Server](https://img.shields.io/badge/Web_Server-Included-blue.svg)](https://github.com/gomgom-40/RD03Radar)
 [![ESPHome](https://img.shields.io/badge/ESPHome-Compatible-blue.svg)](https://esphome.io/)
 [![PlatformIO](https://img.shields.io/badge/PlatformIO-Compatible-orange.svg)](https://platformio.org/)
-[![Made in Egypt](https://img.shields.io/badge/Made%20in-Egypt-red.svg)](https://en.wikipedia.org/wiki/Egypt)
 
 ## 🌟 Overview
 
